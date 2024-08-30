@@ -19,13 +19,18 @@ namespace hmg {
     void HyperMetaGraph::init() {
         clear();
 
-        auto a = addNode("A", RED);
+        auto a = addNode("КУЗДРА", RED);
         auto aa = addNode("AA", RED, a);
+        auto bb = addNode("BB", RED, a);
+        auto cc = addNode("CC", RED, a);
         auto b = addNode("B", RED);
         auto c = addNode("C", RED);
         addEdge(hmg::EdgeType::TARGET, a, b);
         addEdge(hmg::EdgeType::TARGET, b, c);
         addEdge(hmg::EdgeType::TARGET, c, a);
+        addEdge(hmg::EdgeType::TARGET, aa, bb);
+        addEdge(hmg::EdgeType::TARGET, bb, cc);
+        addEdge(hmg::EdgeType::TARGET, cc, aa);
 
         positionInitially(0);
     }
@@ -35,9 +40,13 @@ namespace hmg {
         size_t idx = _nodes.size();
         auto node = std::make_shared<Node>(idx, label, color, parent);
         _nodes[idx] = node;
-        if (parent)
+        if (parent) {
             parent->subNodes.insert(node);
-        node->recalcTower(node);
+            for (auto& sn : parent->subNodes)
+                sn->recalc();
+        } else {
+            node->recalc();
+        }
         maxLvl = std::max(maxLvl, node->lvl);
         _lock.unlock();
         return node;
@@ -45,9 +54,12 @@ namespace hmg {
 
     EdgePtr HyperMetaGraph::addEdge(EdgeType type, NodePtr from, NodePtr to) {
         _lock.lock();
-        size_t idx = _edges.size();
+        size_t idx = _nodes.size();
         auto via = std::make_shared<Node>(idx, "", BLANK, nullptr, true);
+        _nodes[idx] = via;
+        idx = _edges.size();
         auto edge = std::make_shared<Edge>(idx, type, from, via, to);
+        edge->recalc();
         _edges[idx] = edge;
         from->edgesOut.insert(edge);
         to->edgesIn.insert(edge);
@@ -126,11 +138,14 @@ namespace hmg {
     void HyperMetaGraph::draw(Vector2 offset, float scale, const Font& font, NodePtr& hoverNode) {
         _lock.lock();
         for (int lvl = 0; lvl <= maxLvl; ++lvl) {
+            for (auto& n : _nodes)
+                if (!n.second->via && n.second->lvl == lvl)
+                    n.second->predraw(offset, scale, font);
             for (auto& e : _edges)
                 if (e.second->lvl == lvl)
                     e.second->draw(offset, scale, font);
             for (auto& n : _nodes) {
-                if (n.second->lvl == lvl) {
+                if (!n.second->via && n.second->lvl == lvl) {
                     bool hover = n.second->draw(offset, scale, font);            
                     if (hover)
                         hoverNode = n.second;

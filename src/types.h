@@ -14,7 +14,7 @@
 #include "vec_ops.h"
 
 #define NODE_SZ 25.0f
-#define EDGE_THICK 5.0f
+#define EDGE_THICK 3.0f
 #define SPRING_LEN 150.0f
 #define SPRING_STR 0.05f
 
@@ -60,6 +60,7 @@ namespace hmg {
         void move(const Vector2& delta);
         void moveTo(const Vector2& to);
 
+        void predraw(Vector2 offset, float scale, const Font& font);
         bool draw(Vector2 offset, float scale, const Font& font);
     };
 
@@ -83,7 +84,12 @@ namespace hmg {
             idx(idx), type(type), from(from), via(via), to(to)
         { }
         
-        void recalc() { lvl = std::max(from->lvl, to->lvl); }
+        void recalc() { 
+            lvl = via->lvl = std::max(from->lvl, to->lvl);
+            via->parent = (lvl == from->lvl) ? from->parent : to->parent;
+            if (via->parent)
+                via->parent->subNodes.insert(via);
+        }
 
         static Color color(EdgeType type);
         void reposition();

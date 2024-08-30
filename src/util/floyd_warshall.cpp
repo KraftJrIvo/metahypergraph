@@ -6,7 +6,7 @@ void hmg::HyperMetaGraph::getDistancesFW(hmg::Matrix& D) {
     for (auto& e : _edges) {
         auto fromIdx = e.second->from->idx;
         auto toIdx = e.second->to->idx;
-        if (e.second->from->parent == e.second->to->parent)
+        if (e.second->from->lvl == e.second->to->lvl)
             D(fromIdx, toIdx) = D(toIdx, fromIdx) = e.second->from->coeff;
     }
     for (size_t k = 0; k < N; ++k) {

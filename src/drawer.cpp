@@ -30,10 +30,11 @@ namespace hmg {
     {
         _redrawer = std::thread([&]() {
             SetTraceLogLevel(LOG_ERROR);
+            SetConfigFlags(FLAG_MSAA_4X_HINT);
             InitWindow(_winSize.x, _winSize.y + INPUT_LINE_H, _winName.c_str());
             std::string txt = u8" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
             int c; auto cdpts = LoadCodepoints(txt.c_str(), &c);
-            _font = LoadFontEx("res/whitney.ttf", 128, cdpts, c);
+            _font = LoadFontEx("res/sofia-sans-extra-condensed.ttf", 128, cdpts, c);
             UnloadCodepoints(cdpts);
             SetTargetFPS(60);
             recenter();

@@ -66,14 +66,22 @@ namespace hmg {
         via->pos = 0.5f * (from->pos + to->pos);
     }
 
+    void Node::predraw(Vector2 offset, float scale, const Font& font) {
+        float r = radius * scale;
+        Vector2 posmod = pos * scale + offset;
+        float thick = std::max(r + 3 * scale * (float)std::pow(2, -lvl), 1.0f);
+        DrawCircleV(posmod, thick, LIGHTGRAY);
+    }
+
     bool Node::draw(Vector2 offset, float scale, const Font& font) {
         float r = radius * scale;
         Vector2 posmod = pos * scale + offset;
         DrawCircleV(posmod, r, GRAY);
-        DrawCircleLinesV(posmod, r, LIGHTGRAY);
-        auto sz = MeasureTextEx(font, label.c_str(), int(2 * r), 0);
-        auto ratio = (r * 2) / Vector2Length(sz);
-        DrawTextEx(font, label.c_str(), posmod - ratio * sz * 0.5f, ratio * sz.y, 0, WHITE);
+        if (r > 10) {
+            auto sz = MeasureTextEx(font, label.c_str(), int(2 * r), 0);
+            auto ratio = (r * 2) / Vector2Length(sz);
+            DrawTextEx(font, label.c_str(), posmod - ratio * sz * 0.5f, ratio * sz.y, 0, WHITE);
+        }
         return r * r > Vector2DistanceSqr(GetMousePosition(), posmod);
     }
 
@@ -82,7 +90,7 @@ namespace hmg {
         pts[0] = scale * from->pos + offset;
         pts[1] = scale * via->pos + offset;
         pts[2] = scale * to->pos + offset;
-        float thick = std::max(EDGE_THICK * scale, 1.0f);
+        float thick = std::max(EDGE_THICK * scale * (float)std::pow(2, -lvl), 1.0f);
         DrawSplineBezierQuadratic(pts.data(), 3, thick, DARKGRAY);
     }
 }

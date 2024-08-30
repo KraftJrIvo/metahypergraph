@@ -12,7 +12,7 @@ void hmg::HyperMetaGraph::kamadaKawai() {
     for (size_t m = 0; m < N; ++m) {
         const auto& pos_m = _nodes[m]->pos;
         for (size_t i = m; i < N; ++i) {
-            if (i != m && _nodes[i]->parent == _nodes[m]->parent) {
+            if (i != m && _nodes[i]->lvl == _nodes[m]->lvl) {
                 const auto& pos_i = _nodes[i]->pos;
                 const float denom = 1.0f / Vector2Distance(pos_m, pos_i);
                 const auto E = K(m, i) * (pos_m - pos_i - L(m, i) * (pos_m - pos_i) * denom);
@@ -46,7 +46,7 @@ void hmg::HyperMetaGraph::kamadaKawai() {
         const auto& posM = _nodes[idx]->pos;
         Vector2 dE_dpos = Vector2Zero();
         for (size_t i = 0; i < N; ++i) {
-            if (i != idx && _nodes[i]->parent == _nodes[idx]->parent) {
+            if (i != idx && _nodes[i]->lvl == _nodes[idx]->lvl) {
                 const float oldDx = Ex(idx, i);
                 const float oldDy = Ey(idx, i);
                 const auto& posI = _nodes[i]->pos;
@@ -80,7 +80,7 @@ void hmg::HyperMetaGraph::kamadaKawai() {
         float d2E_dy2 = 0;
         const auto& posM = _nodes[idx]->pos;
         for (size_t i = 0; i < N; ++i) {
-            if (i != idx && _nodes[i]->parent == _nodes[idx]->parent) {
+            if (i != idx && _nodes[i]->lvl == _nodes[idx]->lvl) {
                 const auto& posI = _nodes[i]->pos;
                 const float denom = 1.0f / std::pow(Vector2DistanceSqr(posM, posI), 1.5);
                 const float kmat = K(idx, i);
