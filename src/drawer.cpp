@@ -5,10 +5,10 @@
 
 #define INPUT_LINE_H 100
 
-namespace hmg {
+namespace mhg {
     class DrawerImpl : public Drawer {
     public:
-        DrawerImpl(HyperMetaGraph& hmg, Vector2 winSize, std::string winName);
+        DrawerImpl(MetaHyperGraph& mhg, Vector2 winSize, std::string winName);
 
         void recenter();
     private:
@@ -25,8 +25,8 @@ namespace hmg {
         void _update();
     };
 
-    DrawerImpl::DrawerImpl(HyperMetaGraph& hmg, Vector2 winSize, std::string winName) :
-        Drawer(hmg, winSize, winName)
+    DrawerImpl::DrawerImpl(MetaHyperGraph& mhg, Vector2 winSize, std::string winName) :
+        Drawer(mhg, winSize, winName)
     {
         _redrawer = std::thread([&]() {
             SetTraceLogLevel(LOG_ERROR);
@@ -34,10 +34,10 @@ namespace hmg {
             InitWindow(_winSize.x, _winSize.y + INPUT_LINE_H, _winName.c_str());
             std::string txt = u8" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
             int c; auto cdpts = LoadCodepoints(txt.c_str(), &c);
-            _font = LoadFontEx("res/sofia-sans-extra-condensed.ttf", 128, cdpts, c);
+            _font = LoadFontEx("res/firacode.ttf", FONT_SZ, cdpts, c);
             UnloadCodepoints(cdpts);
             SetTargetFPS(60);
-            recenter();
+            _offset = _winSize * 0.5f;
             while (!WindowShouldClose() && _drawing) {
                 _draw();
                 _update();
@@ -48,33 +48,34 @@ namespace hmg {
     }
     
     void DrawerImpl::recenter() {
-        Vector2 center = _hmg.getCenter();
+        Vector2 center = _mhg.getCenter();
         _offset = -center * _scale + _winSize * 0.5f;
+        _scale = 1.0f;
     }
 
     void DrawerImpl::_update() {
         auto mpos = GetMousePosition();
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && _hoverNode)
-            _hmg.grabNode(_hoverNode, (_scale * _hoverNode->pos + _offset) - mpos);
-        else if (_hmg.nodeGrabbed()) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && _hoverNode)
+            _mhg.grabNode(_hoverNode, (_scale * _hoverNode->hg->localScale() * _hoverNode->pos + _offset) - mpos);
+        else if (_mhg.nodeGrabbed()) {
             if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-                _hmg.ungrabNode();
+                _mhg.ungrabNode();
             else
-                _hmg.dragNode(_offset + _curOffset, _scale, mpos);
+                _mhg.dragNode(_offset + _curOffset, _scale, mpos);
         }
         
         // TOGGLE FULLSCREEN
-        if (IsKeyPressed(KEY_F)) {
+        if (IsKeyPressed(KEY_F) || IsKeyPressed(KEY_F11)) {
             if (!IsWindowFullscreen()) {
                 auto newWinSz = Vector2{(float)GetMonitorWidth(0), (float)GetMonitorHeight(0)};
-                _offset += (newWinSz - _winSize) * 0.5f - Vector2{0.0f, 50.0f};
+                _offset += GetWindowPosition();
                 _winSize = newWinSz;
                 SetWindowSize(int(_winSize.x), int(_winSize.y));
             }
             ToggleFullscreen();
             if (!IsWindowFullscreen()) {
                 auto newWinSz = _baseWinSize;
-                _offset += (newWinSz - _winSize) * 0.5f + Vector2{0.0f, 50.0f};
+                _offset -= GetWindowPosition();
                 _winSize = newWinSz;
                 SetWindowSize(int(_winSize.x), int(_winSize.y));
             }
@@ -99,11 +100,11 @@ namespace hmg {
         BeginDrawing();
         ClearBackground(BLACK);
         _hoverNode = nullptr;
-        _hmg.draw(_offset + _curOffset, _scale, _font, _hoverNode);
+        _mhg.draw(_offset + _curOffset, _scale, _font, _hoverNode);
         EndDrawing();
     }
 
-    std::shared_ptr<Drawer> Drawer::create(HyperMetaGraph& w, Vector2 winSize, std::string winName) {
+    std::shared_ptr<Drawer> Drawer::create(MetaHyperGraph& w, Vector2 winSize, std::string winName) {
         return std::make_shared<DrawerImpl>(w, winSize, winName);
     }
 }

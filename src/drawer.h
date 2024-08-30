@@ -1,18 +1,18 @@
 #pragma once
 
-#include "hypermetagraph.h"
+#include "types/metahypergraph.h"
 #include <memory>
 #include <thread>
 #include <map>
 
-namespace hmg {
+namespace mhg {
     class Drawer
     {
     public:
-        Drawer(HyperMetaGraph& hmg, Vector2 winSize = { 512, 512 }, std::string winName = "") :
-            _hmg(hmg), _baseWinSize(winSize), _winSize(winSize), _winName(winName)
+        Drawer(MetaHyperGraph& mhg, Vector2 winSize = { 512, 512 }, std::string winName = "") :
+            _mhg(mhg), _baseWinSize(winSize), _winSize(winSize), _winName(winName)
         { }
-        ~Drawer() { _redrawer.join(); }
+        virtual ~Drawer() { _redrawer.join(); }
 
         void stop() { _drawing = false; }
         bool isDrawing() { return _drawing; }
@@ -20,10 +20,10 @@ namespace hmg {
         
         virtual void recenter() = 0;
 
-        static std::shared_ptr<Drawer> create(HyperMetaGraph& hmg, Vector2 winSize = { 512, 512 }, std::string winName = "");
+        static std::shared_ptr<Drawer> create(MetaHyperGraph& mhg, Vector2 winSize = { 512, 512 }, std::string winName = "");
 
     protected:
-        HyperMetaGraph& _hmg;
+        MetaHyperGraph& _mhg;
 
         Vector2 _baseWinSize;
         Vector2 _winSize;

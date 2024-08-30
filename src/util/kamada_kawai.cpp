@@ -1,18 +1,18 @@
-#include "../hypermetagraph.h"
+#include "../types/hypergraph.h"
 
-void hmg::HyperMetaGraph::kamadaKawai() {
+void mhg::HyperGraph::kamadaKawai() {
     size_t N = _nodes.size();
-    hmg::Matrix D; getDistancesFW(D);
-    hmg::Matrix L   = SPRING_LEN * D;
-    hmg::Matrix K   = SPRING_STR * D.array().pow(-2);
-    hmg::Matrix Ex  = hmg::Matrix::Zero(N, N);
-    hmg::Matrix Ey  = hmg::Matrix::Zero(N, N);
-    hmg::Vector Exs = hmg::Vector::Zero(N);
-    hmg::Vector Eys = hmg::Vector::Zero(N);
+    mhg::Matrix D; floydWarshall(D);
+    mhg::Matrix L   = SPRING_LEN * D;
+    mhg::Matrix K   = SPRING_STR * D.array().pow(-2);
+    mhg::Matrix Ex  = mhg::Matrix::Zero(N, N);
+    mhg::Matrix Ey  = mhg::Matrix::Zero(N, N);
+    mhg::Vector Exs = mhg::Vector::Zero(N);
+    mhg::Vector Eys = mhg::Vector::Zero(N);
     for (size_t m = 0; m < N; ++m) {
         const auto& pos_m = _nodes[m]->pos;
         for (size_t i = m; i < N; ++i) {
-            if (i != m && _nodes[i]->lvl == _nodes[m]->lvl) {
+            if (i != m) {
                 const auto& pos_i = _nodes[i]->pos;
                 const float denom = 1.0f / Vector2Distance(pos_m, pos_i);
                 const auto E = K(m, i) * (pos_m - pos_i - L(m, i) * (pos_m - pos_i) * denom);
@@ -46,7 +46,7 @@ void hmg::HyperMetaGraph::kamadaKawai() {
         const auto& posM = _nodes[idx]->pos;
         Vector2 dE_dpos = Vector2Zero();
         for (size_t i = 0; i < N; ++i) {
-            if (i != idx && _nodes[i]->lvl == _nodes[idx]->lvl) {
+            if (i != idx) {
                 const float oldDx = Ex(idx, i);
                 const float oldDy = Ey(idx, i);
                 const auto& posI = _nodes[i]->pos;
@@ -80,7 +80,7 @@ void hmg::HyperMetaGraph::kamadaKawai() {
         float d2E_dy2 = 0;
         const auto& posM = _nodes[idx]->pos;
         for (size_t i = 0; i < N; ++i) {
-            if (i != idx && _nodes[i]->lvl == _nodes[idx]->lvl) {
+            if (i != idx) {
                 const auto& posI = _nodes[i]->pos;
                 const float denom = 1.0f / std::pow(Vector2DistanceSqr(posM, posI), 1.5);
                 const float kmat = K(idx, i);
@@ -97,7 +97,7 @@ void hmg::HyperMetaGraph::kamadaKawai() {
         const auto& J = dE_dpos.y;
         const float dy = (C / A + J / B) / (B / A - I / B);
         const float dx = -(B * dy + C) / A;
-        _nodes[idx]->move({dx, dy});
+        _nodes[idx]->pos += {dx, dy};
         updateE(idx);
     };
     while (maxEnrg > THRESH && its < MAX_ITS) {

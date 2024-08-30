@@ -6,24 +6,25 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "/utf-8")
 set(CMAKE_C_FLAGS "/utf-8")
 
-project(HMG VERSION 1.0 DESCRIPTION "hyper meta graph" LANGUAGES CXX)
+project(MHG VERSION 1.0 DESCRIPTION "meta hyper graph" LANGUAGES CXX)
 
 # TARGET
-set(HMG_SOURCE_FILES    
-    "src/main.cpp"
-    "src/types.cpp"
-    "src/hypermetagraph.cpp"
-    "src/drawer.cpp"
-    "src/physics.cpp"
+set(MHG_SOURCE_FILES    
+    "src/types/node.cpp"
+    "src/types/edge.cpp"
+    "src/types/hypergraph.cpp"
+    "src/types/metahypergraph.cpp"
     "src/util/floyd_warshall.cpp"
     "src/util/kamada_kawai.cpp"
+    "src/drawer.cpp"
+    "src/main.cpp"
 )
-add_executable(HMG ${HMG_SOURCE_FILES})
-target_include_directories(HMG PUBLIC "src")
+add_executable(MHG ${MHG_SOURCE_FILES})
+target_include_directories(MHG PUBLIC "src")
 
 # DEPENDENCIES
 find_package(Eigen3 CONFIG REQUIRED)
-target_link_libraries(HMG PUBLIC Eigen3::Eigen)
+target_link_libraries(MHG PUBLIC Eigen3::Eigen)
 
 set(RAYLIB_VERSION 5.0)
 find_package(raylib ${RAYLIB_VERSION} QUIET) # QUIET or REQUIRED
@@ -42,7 +43,7 @@ if (NOT raylib_FOUND) # If there's none, fetch and build raylib
     add_subdirectory(${raylib_SOURCE_DIR} ${raylib_BINARY_DIR})
   endif()
 endif()
-target_link_libraries(HMG PUBLIC raylib)
+target_link_libraries(MHG PUBLIC raylib)
 
 add_custom_target(prepare_rel
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/Release

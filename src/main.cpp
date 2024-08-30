@@ -8,18 +8,17 @@
 
 int main(int argc, char *argv[]) {
 	
-    hmg::HyperMetaGraph hmg;
+    mhg::MetaHyperGraph mhg;
 
-	hmg.init();
+	mhg.init();
 
-    auto drawer = hmg::Drawer::create(hmg, {W_W, W_H}, "HYPER META GRAPH");
-	drawer->recenter();
+    auto drawer = mhg::Drawer::create(mhg, {W_W, W_H}, "HYPER META GRAPH");
 
 	while (drawer->isDrawing()) {
-		hmg.doPhysics();
+		//mhg.doPhysics();
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		if (IsKeyPressed(KEY_R)) {
-			hmg.init();
+			mhg.init();
 			drawer->recenter();
 		}
 	}

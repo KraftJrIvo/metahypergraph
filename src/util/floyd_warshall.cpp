@@ -1,13 +1,12 @@
-#include "../hypermetagraph.h"
+#include "../types/hypergraph.h"
 
-void hmg::HyperMetaGraph::getDistancesFW(hmg::Matrix& D) {
+void mhg::HyperGraph::floydWarshall(mhg::Matrix& D) {
     size_t N = _nodes.size();
-    D = (hmg::Matrix::Ones(N, N) - hmg::Matrix::Identity(N, N)) * 1e9f;
+    D = (mhg::Matrix::Ones(N, N) - mhg::Matrix::Identity(N, N)) * 1e9f;
     for (auto& e : _edges) {
         auto fromIdx = e.second->from->idx;
         auto toIdx = e.second->to->idx;
-        if (e.second->from->lvl == e.second->to->lvl)
-            D(fromIdx, toIdx) = D(toIdx, fromIdx) = e.second->from->coeff;
+        D(fromIdx, toIdx) = D(toIdx, fromIdx) = 1.0f;
     }
     for (size_t k = 0; k < N; ++k) {
         for (size_t i = 0; i < N - 1; ++i) {
