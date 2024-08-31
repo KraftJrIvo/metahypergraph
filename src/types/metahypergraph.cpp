@@ -107,7 +107,7 @@ namespace mhg {
     }
 
     void MetaHyperGraph::dragNode(Vector2 offset, float scale, const Vector2& mpos) {
-        float ls = _grabbedNode->hg->localScale() * scale;
+        float ls = _grabbedNode->hg->scale() * scale;
         _grabbedNode->pos = ((mpos - offset) + _grabOff) / ls;
     }
 
@@ -117,7 +117,7 @@ namespace mhg {
 
     void MetaHyperGraph::draw(Vector2 offset, float scale, const Font& font, NodePtr& hoverNode) {
         _lock.lock();
-        _root->draw(Vector2Zero(), offset, scale, 1.0f, font, hoverNode);
+        _root->draw(Vector2Zero(), offset, scale, font, physicsEnabled, hoverNode);
         _lock.unlock();
     }
 }

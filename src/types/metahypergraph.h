@@ -5,7 +5,9 @@
 #include "hypergraph.h"
 
 namespace mhg {
+    class DrawerImpl;
     class MetaHyperGraph {
+        friend class DrawerImpl;
         public:
             void clear();
             void init();
@@ -30,6 +32,8 @@ namespace mhg {
 
             NodePtr _grabbedNode = nullptr;
             Vector2 _grabOff = Vector2Zero();
+
+            bool physicsEnabled = false;
 
             std::mutex _lock;
     };

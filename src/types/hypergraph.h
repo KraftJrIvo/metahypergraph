@@ -16,8 +16,11 @@ namespace mhg {
 
             NodePtr parent = nullptr;
             int lvl = 0;
-            float localScale();
+            float coeff();
+            float scale();
             int nDrawableNodes = 0;
+            int _nDrawableNodesCache = -1;
+            float _scaleCache;
 
             void clear();
 
@@ -35,7 +38,7 @@ namespace mhg {
             void recenter();
             void move(const Vector2 delta);
 
-            void draw(Vector2 origin, Vector2 offset, float scale, float lsAcc, const Font& font, NodePtr& hoverNode);
+            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr& hoverNode);
 
         private:
             std::map<size_t, NodePtr> _nodes;

@@ -33,7 +33,7 @@ namespace mhg {
         Vector2 getPoint(float t);
         void reposition();
 
-        void draw(Vector2 origin, Vector2 offset, float gs, float ls, const Font& font);
+        void draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics);
     private:
         std::array<Vector2, 3> _pts;
     };

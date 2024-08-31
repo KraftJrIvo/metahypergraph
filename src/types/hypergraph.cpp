@@ -9,16 +9,31 @@ namespace mhg {
         _edges.clear();
     }
 
-    float HyperGraph::localScale() {
-        return parent ? std::pow(nDrawableNodes + 1, -lvl) : 1.0f;
+    float HyperGraph::coeff() {
+        return 1.0f / (nDrawableNodes + 1);
+    }
+
+    float HyperGraph::scale() {
+        if (!parent)
+            return 1.0f;
+        if (_nDrawableNodesCache == nDrawableNodes)
+            return parent->hg->scale() * _scaleCache;
+        _nDrawableNodesCache = nDrawableNodes;
+        _scaleCache = coeff();
+        return parent->hg->scale() * _scaleCache;
     }
 
     NodePtr HyperGraph::addNode(HyperGraphPtr self, const std::string &label, const Color &color, bool via, bool hyper) {
         size_t idx = _nodes.size();
         auto node = std::make_shared<Node>(self, idx, label, color, via, hyper);
-        _nodes[idx] = node;
-        if (!via)
+        if (!via) {
+            float preCoeff = scale();
             nDrawableNodes++;
+            float aftCoeff = scale();
+            for (auto& n : _nodes)
+                n.second->pos = n.second->pos * preCoeff / aftCoeff;
+        }
+        _nodes[idx] = node;
         return node;
     }
 
@@ -81,26 +96,24 @@ namespace mhg {
             n.second->pos += delta;
     }
 
-    void HyperGraph::draw(Vector2 origin, Vector2 offset, float scale, float lsAcc, const Font& font, NodePtr& hoverNode) {
-        origin += (parent ? parent->pos : Vector2Zero()) * lsAcc;
-        float ls = localScale();
-        Vector2 scaledOrigin = origin * scale;
-        float gsls = scale * ls;
+    void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, NodePtr& hoverNode) {
+        origin += (parent ? (parent->hg->scale() * parent->pos) : Vector2Zero());
+        Vector2 scaledOrigin = origin * s;
         for (auto& n : _nodes)
             if (!n.second->via)
-                n.second->predraw(scaledOrigin, offset, scale, gsls, font);
+                n.second->predraw(scaledOrigin, offset, s, font);
         for (auto& e : _edges)
-            e.second->draw(scaledOrigin, offset, scale, gsls, font);
+            e.second->draw(scaledOrigin, offset, s, font, physics);
         for (auto& n : _nodes) {
             if (!n.second->via && !n.second->hyper) {
-                bool hover = n.second->draw(scaledOrigin, offset, scale, gsls, font);            
+                bool hover = n.second->draw(scaledOrigin, offset, s, font);            
                 if (hover)
                     hoverNode = n.second;
             }
         }
         for (auto& n : _nodes)
-            if (n.second->content && gsls > HIDE_CONTENT_SCALE)
-                n.second->content->draw(origin, offset, scale, lsAcc * ls, font, hoverNode);
+            if (n.second->content && s * scale() > HIDE_CONTENT_SCALE)
+                n.second->content->draw(origin, offset, s, font, physics, hoverNode);
     }
 
 }

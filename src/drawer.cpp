@@ -58,7 +58,7 @@ namespace mhg {
     void DrawerImpl::_update() {
         auto mpos = GetMousePosition();
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && _hoverNode)
-            _mhg.grabNode(_hoverNode, (_scale * _hoverNode->hg->localScale() * _hoverNode->pos + _offset) - mpos);
+            _mhg.grabNode(_hoverNode, (_scale * _hoverNode->hg->scale() * _hoverNode->pos + _offset) - mpos);
         else if (_mhg.nodeGrabbed()) {
             if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
                 _mhg.ungrabNode();
@@ -96,6 +96,14 @@ namespace mhg {
         // RECENTER
         if (IsKeyPressed(KEY_C))
             recenter();
+
+        // EDIT
+        if (IsKeyPressed(KEY_A)) {
+            auto node = _mhg.addNode("", RED, _hoverNode);
+            auto hg = _hoverNode ? _hoverNode->content : _mhg._root;
+            auto o = _hoverNode ? _hoverNode->_posCache : _offset;
+            node->pos = (mpos - o) / (hg->scale() * _scale);
+        }
     }
 
     void DrawerImpl::_draw() {
