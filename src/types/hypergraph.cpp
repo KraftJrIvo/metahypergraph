@@ -88,12 +88,12 @@ namespace mhg {
         float gsls = scale * ls;
         for (auto& n : _nodes)
             if (!n.second->via)
-                n.second->predraw(scaledOrigin, offset, gsls, font);
+                n.second->predraw(scaledOrigin, offset, scale, gsls, font);
         for (auto& e : _edges)
-            e.second->draw(scaledOrigin, offset, gsls, font);
+            e.second->draw(scaledOrigin, offset, scale, gsls, font);
         for (auto& n : _nodes) {
             if (!n.second->via && !n.second->hyper) {
-                bool hover = n.second->draw(scaledOrigin, offset, gsls, font);            
+                bool hover = n.second->draw(scaledOrigin, offset, scale, gsls, font);            
                 if (hover)
                     hoverNode = n.second;
             }

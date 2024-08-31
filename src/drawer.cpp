@@ -6,12 +6,14 @@
 #define INPUT_LINE_H 100
 
 namespace mhg {
-    class DrawerImpl : public Drawer {
+    class DrawerImpl final : public Drawer {
     public:
         DrawerImpl(MetaHyperGraph& mhg, Vector2 winSize, std::string winName);
+        ~DrawerImpl() { _redrawer.join(); };
 
         void recenter();
     private:
+        std::thread _redrawer;
         Vector2 _offset = Vector2Zero();
         Vector2 _curOffset = Vector2Zero();
         Vector2 _lastMouseGrabPos = Vector2Zero();

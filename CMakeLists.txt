@@ -14,6 +14,7 @@ set(MHG_SOURCE_FILES
     "src/types/edge.cpp"
     "src/types/hypergraph.cpp"
     "src/types/metahypergraph.cpp"
+    "src/util/bezier.cpp"
     "src/util/floyd_warshall.cpp"
     "src/util/kamada_kawai.cpp"
     "src/drawer.cpp"

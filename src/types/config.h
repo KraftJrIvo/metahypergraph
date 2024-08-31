@@ -3,6 +3,7 @@
 #define HIDE_TXT_SCALE 0.6f
 #define HIDE_CONTENT_SCALE 0.9f
 #define FONT_SZ 24
+#define ARROW_SZ 0.04f
 
 #define EDGE_THICK 5.0f
 #define SPRING_LEN 100.0f

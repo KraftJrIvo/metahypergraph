@@ -25,13 +25,18 @@ namespace mhg {
         std::set<EdgePtr> edgesOut;
 
         Vector2 pos = Vector2Zero();
+        Vector2 _posCache;
+        float _lsCache;
+        float _rCache;
 
         Node(HyperGraphPtr hg, size_t idx, const std::string& label, const Color& color, bool via = false, bool hyper = false) :
             hg(hg), idx(idx), label(label), color(color), via(via), hyper(hyper)
         { }
 
-        void predraw(Vector2 origin, Vector2 offset, float scale, const Font& font);
-        bool draw(Vector2 orign, Vector2 offset, float scale, const Font& font);
+        float getDistToBorder(float angle, float scale);
+
+        void predraw(Vector2 origin, Vector2 offset, float gs, float ls, const Font& font);
+        bool draw(Vector2 orign, Vector2 offset, float gs, float ls, const Font& font);
     };
 
 }

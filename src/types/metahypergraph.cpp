@@ -46,6 +46,19 @@ namespace mhg {
             {mhg::EdgeType::TARGET, c2},
         };
         addHyperEdge(mhg::EdgeType::TARGET, c, tos0);
+        addEdge(mhg::EdgeType::TARGET, aaa, a2);
+        addEdge(mhg::EdgeType::TARGET, a2, bbb);
+
+        auto m1 = addNode("M1", RED, b2);
+        auto m2 = addNode("M2", RED, b2);
+        auto m3 = addNode("M3", RED, b2);
+        auto m4 = addNode("M4", RED, b2);
+        auto m5 = addNode("M5", RED, b2);
+        addEdge(mhg::EdgeType::TARGET, m1, m2);
+        addEdge(mhg::EdgeType::TARGET, m2, m3);
+        addEdge(mhg::EdgeType::TARGET, m3, m4);
+        addEdge(mhg::EdgeType::TARGET, m4, m5);
+        addEdge(mhg::EdgeType::TARGET, m5, m1);
 
         reposition();
         _lock.unlock();
