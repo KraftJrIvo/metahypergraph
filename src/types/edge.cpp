@@ -25,6 +25,7 @@ namespace mhg {
 
     void Edge::draw(Vector2 origin, Vector2 offset, float gs, float ls, const Font& font) {
         NodePtr minLvlNode = (from->hg->lvl < to->hg->lvl) ? from : to;
+        NodePtr maxLvlNode = (from->hg->lvl > to->hg->lvl) ? from : to;
         bool fromSameLvl = (from->hg->lvl == via->hg->lvl);
         bool toSameLvl = (to->hg->lvl == via->hg->lvl);
 
@@ -32,9 +33,7 @@ namespace mhg {
         _pts[2] = toSameLvl ? (origin + ls * to->pos + offset) : to->_posCache;
         _pts[1] = (!fromSameLvl || !toSameLvl) ? (0.5f * (_pts[0] + _pts[2])) : (origin + ls * via->pos + offset);
 
-        if ((to->hg->lvl != via->hg->lvl))
-            std::cout << "";
-        float thick = std::clamp(EDGE_THICK * gs, 1.0f, EDGE_THICK);
+        float thick = std::clamp(EDGE_THICK * maxLvlNode->_lsCache, 1.0f, EDGE_THICK);
 
         Vector2 apos; float angle; float t1, t2; 
         findArrowPositionBezier(false, minLvlNode->_lsCache, apos, angle, t1);
@@ -47,10 +46,13 @@ namespace mhg {
         float end   = fromSameLvl ? t1 : t2;
         DrawSplineSegmentBezierQuadraticPart(_pts[0], _pts[1], _pts[2], thick, RED, start, end);
 
-        auto arrow = Edge::getArrowHead();
-        float arscl = std::clamp(EDGE_THICK * minLvlNode->_lsCache, 1.0f, EDGE_THICK) * ARROW_SZ;
-        Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle);
-        angle = 180.0f * angle / PI;
-        DrawTextureEx(arrow, apos - off * arscl, angle, arscl, RED);
+        bool drawArrows = (maxLvlNode->_lsCache > HIDE_ARROW_SCALE);
+        if (drawArrows) {
+            auto arrow = Edge::getArrowHead();
+            float arscl = std::clamp(EDGE_THICK * maxLvlNode->_lsCache, 1.0f, EDGE_THICK) * ARROW_SZ;
+            Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle);
+            angle = 180.0f * angle / PI;
+            DrawTextureEx(arrow, apos - off * arscl, angle, arscl, RED);
+        }
     }
 }

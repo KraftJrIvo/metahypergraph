@@ -15,12 +15,13 @@ namespace mhg {
     void Node::predraw(Vector2 origin, Vector2 offset, float gs, float ls, const Font& font) {
         Vector2 posmod = origin + pos * ls + offset;
         if (hyper) {
-            float thick = std::clamp(2 * EDGE_THICK * gs, 1.0f, EDGE_THICK * 2);
+            float thick = std::clamp(2 * EDGE_THICK * ls, 1.0f, EDGE_THICK * 2);
             DrawCircleV(posmod, thick, RED);
+            _lsCache = ls;
+            _rCache = thick;
         } else {
-            float thick = std::clamp(NODE_BORDER * gs, 1.0f, NODE_BORDER);
+            float thick = std::clamp(NODE_BORDER * ls, 1.0f, NODE_BORDER);
             float r = (NODE_SZ) * ls + thick;
-            _rCache = r;
             DrawCircleV(posmod, r, { 140, 140, 140, 255 });
         }
     }
