@@ -41,7 +41,7 @@ void mhg::Edge::findArrowPositionBezier(bool atStart, float scale, Vector2& pos,
   } 
 
 #define SPLINE_SEGMENT_DIVISIONS 24
-void mhg::Edge::DrawSplineSegmentBezierQuadraticPart(Vector2 p1, Vector2 c2, Vector2 p3, float thick, Color color, float start, float end)
+bool mhg::Edge::DrawSplineSegmentBezierQuadraticPart(Vector2 p1, Vector2 c2, Vector2 p3, float thick, Color color, float start, float end)
 {
     const float step = (end - start)/SPLINE_SEGMENT_DIVISIONS;
 
@@ -53,7 +53,7 @@ void mhg::Edge::DrawSplineSegmentBezierQuadraticPart(Vector2 p1, Vector2 c2, Vec
         previous.y = a*p1.y + b*c2.y + c*p3.y;
         previous.x = a*p1.x + b*c2.x + c*p3.x;
     }
-
+    bool hover = false;
     Vector2 current = { 0 };
     float t;
 
@@ -88,8 +88,11 @@ void mhg::Edge::DrawSplineSegmentBezierQuadraticPart(Vector2 p1, Vector2 c2, Vec
         points[2*i].x = current.x + dy*size;
         points[2*i].y = current.y - dx*size;
 
+        hover |= CheckCollisionPointLine(GetMousePosition(), previous, current, thick * 2);
+
         previous = current;
     }
 
-    DrawTriangleStrip(points, 2*SPLINE_SEGMENT_DIVISIONS + 2, color);
+    DrawTriangleStrip(points, 2*SPLINE_SEGMENT_DIVISIONS + 2, highlight ? ColorBrightness(color, 0.25f) : color);
+    return hover;
 }

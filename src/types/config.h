@@ -7,5 +7,6 @@
 #define ARROW_SZ 0.04f
 
 #define EDGE_THICK 5.0f
+#define EDGE_HOVER_R 4.0f
 #define SPRING_LEN 100.0f
 #define SPRING_STR 0.05f

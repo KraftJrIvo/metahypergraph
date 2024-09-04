@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 	while (drawer->isDrawing()) {
 		//mhg.doPhysics();
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		if (IsKeyPressed(KEY_R)) {
+		if (!drawer->isEditing() && IsKeyPressed(KEY_R)) {
 			mhg.init();
 			drawer->recenter();
 		}

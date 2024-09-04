@@ -1,5 +1,7 @@
 #pragma once
 
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "types/metahypergraph.h"
 #include <memory>
 #include <thread>
@@ -15,6 +17,7 @@ namespace mhg {
 
         void stop() { _drawing = false; }
         bool isDrawing() { return _drawing; }
+        bool isEditing() { return (_editingNode != nullptr); }
         bool isChanged() { bool c = _changed; _changed = false; return c; }
         
         virtual void recenter() = 0;
@@ -23,14 +26,12 @@ namespace mhg {
 
     protected:
         MetaHyperGraph& _mhg;
+        NodePtr _editingNode = nullptr;
 
         Vector2 _baseWinSize;
         Vector2 _winSize;
         std::string _winName;
         std::string _windowName;
-
-        NodePtr grabbed = nullptr;
-        Vector2 grabbedOff = Vector2Zero();
 
         bool _drawing = true;
         bool _changed = true;

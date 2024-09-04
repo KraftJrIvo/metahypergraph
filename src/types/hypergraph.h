@@ -25,9 +25,14 @@ namespace mhg {
             void clear();
 
             NodePtr addNode(HyperGraphPtr self, const std::string& label, const Color& color, bool via = false, bool hyper = false);
+            void removeNode(NodePtr node, bool clear = true);
+            void transferNode(HyperGraphPtr self, NodePtr node, bool moveEdges = true);
             EdgePtr addEdge(HyperGraphPtr self, EdgeType type, NodePtr from, NodePtr to);
+            void removeEdge(EdgePtr edge, bool clear = true);
+            void transferEdge(HyperGraphPtr self, EdgePtr edge);
             NodePtr addHyperEdge(HyperGraphPtr self, EdgeType type, NodePtr from, const std::list<std::pair<EdgeType, NodePtr>>& tos);
 
+            void updateScale(int off);
             void recalcTower(NodePtr in, NodePtr from = nullptr);
 
             void floydWarshall(Matrix& D);
@@ -38,7 +43,8 @@ namespace mhg {
             void recenter();
             void move(const Vector2 delta);
 
-            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr& hoverNode);
+            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgePtr& hoverEdge);
+            NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
 
         private:
             std::map<size_t, NodePtr> _nodes;

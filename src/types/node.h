@@ -28,6 +28,9 @@ namespace mhg {
         Vector2 _posCache;
         float _rCache;
 
+        bool highlight = false;
+        bool editing = false;
+
         Node(HyperGraphPtr hg, size_t idx, const std::string& label, const Color& color, bool via = false, bool hyper = false) :
             hg(hg), idx(idx), label(label), color(color), via(via), hyper(hyper)
         { }

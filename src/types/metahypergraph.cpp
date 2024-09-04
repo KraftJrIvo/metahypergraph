@@ -16,7 +16,7 @@ namespace mhg {
             _root = std::make_shared<HyperGraph>();
         clear();
 
-        auto a = addNode("A", RED);
+        auto a = addNode("A1", RED);
         auto aa = addNode("AA", RED, a);
         auto aaa = addNode("AAA", RED, aa);
         auto bbb = addNode("BBB", RED, aa);
@@ -28,6 +28,7 @@ namespace mhg {
         auto bb2 = addNode("BB", RED, b);
         auto c = addNode("C", RED);
         addEdge(mhg::EdgeType::TARGET, a, b);
+        addEdge(mhg::EdgeType::TARGET, b, a);
         addEdge(mhg::EdgeType::TARGET, b, c);
         addEdge(mhg::EdgeType::TARGET, c, a);
         addEdge(mhg::EdgeType::TARGET, aa, bb);
@@ -37,7 +38,8 @@ namespace mhg {
         addEdge(mhg::EdgeType::TARGET, bbb, ccc);
         addEdge(mhg::EdgeType::TARGET, ccc, aaa);        
         addEdge(mhg::EdgeType::TARGET, aa2, bb2);
-        auto a2 = addNode("A", RED);
+        auto a2 = addNode("A2", RED);
+        auto a3 = addNode("A3", RED, a2);
         auto b2 = addNode("B", RED);
         auto c2 = addNode("C", RED);
         std::list<std::pair<EdgeType, NodePtr>> tos0 = {
@@ -46,8 +48,8 @@ namespace mhg {
             {mhg::EdgeType::TARGET, c2},
         };
         addHyperEdge(mhg::EdgeType::TARGET, c, tos0);
-        addEdge(mhg::EdgeType::TARGET, aaa, a2);
-        addEdge(mhg::EdgeType::TARGET, a2, bbb);
+        addEdge(mhg::EdgeType::TARGET, aaa, a3);
+        addEdge(mhg::EdgeType::TARGET, a3, bbb);
 
         auto m1 = addNode("M1", RED, b2);
         auto m2 = addNode("M2", RED, b2);
@@ -65,18 +67,26 @@ namespace mhg {
     }
 
     NodePtr MetaHyperGraph::addNode(const std::string &label, const Color &color, NodePtr parent) {
-        auto hmg = _root;
+        auto hg = _root;
         if (parent) {
             if (!parent->content)
                 parent->content = std::make_shared<HyperGraph>(parent);
-            hmg = parent->content;
+            hg = parent->content;
         }
-        return hmg->addNode(hmg, label, color);
+        return hg->addNode(hg, label, color);
+    }
+
+    void MetaHyperGraph::removeNode(NodePtr node) {
+        node->hg->removeNode(node);
     }
 
     EdgePtr MetaHyperGraph::addEdge(EdgeType type, NodePtr from, NodePtr to) {
-        auto hmg = (from->hg->lvl > to->hg->lvl) ? from->hg : to->hg;
-        return hmg->addEdge(hmg, type, from, to);
+        auto hg = (from->hg->lvl > to->hg->lvl) ? from->hg : to->hg;
+        return hg->addEdge(hg, type, from, to);
+    }
+
+    void MetaHyperGraph::removeEdge(EdgePtr edge) {
+        edge->via->hg->removeEdge(edge);
     }
 
     NodePtr MetaHyperGraph::addHyperEdge(EdgeType type, NodePtr from, const std::list<std::pair<EdgeType, NodePtr>>& tos) {
@@ -115,9 +125,13 @@ namespace mhg {
         return _root->getCenter();
     }
 
-    void MetaHyperGraph::draw(Vector2 offset, float scale, const Font& font, NodePtr& hoverNode) {
+    void MetaHyperGraph::draw(Vector2 offset, float scale, const Font& font, NodePtr& hoverNode, EdgePtr& hoverEdge) {
         _lock.lock();
-        _root->draw(Vector2Zero(), offset, scale, font, physicsEnabled, hoverNode);
+        _root->draw(Vector2Zero(), offset, scale, font, physicsEnabled, _grabbedNode, hoverNode, hoverEdge);
         _lock.unlock();
+    }
+
+    NodePtr MetaHyperGraph::getNodeAt(Vector2 pos, const std::set<NodePtr>& except) {
+        return _root->getNodeAt(pos, except);
     }
 }
