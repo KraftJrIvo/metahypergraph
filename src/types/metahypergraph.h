@@ -15,27 +15,19 @@ namespace mhg {
 
             NodePtr addNode(const std::string& label, const Color& color, NodePtr parent = nullptr);
             void removeNode(NodePtr node);
-            EdgePtr addEdge(EdgeType type, NodePtr from, NodePtr to);
+            EdgePtr addEdge(EdgeLinkStyle style, NodePtr from, NodePtr to);
             void removeEdge(EdgePtr edge);
-            NodePtr addHyperEdge(EdgeType type, NodePtr from, const std::list<std::pair<EdgeType, NodePtr>>& tos);
+            NodePtr addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
 
             void reposition(unsigned int seed = 0);
 
-            void grabNode(NodePtr node, const Vector2& off);
-            void ungrabNode();
-            void dragNode(Vector2 offset, float scale, const Vector2& mpos);
-            bool nodeGrabbed() { return (_grabbedNode != nullptr); }
-
             Vector2 getCenter();
 
-            void draw(Vector2 offset, float scale, const Font& font, NodePtr& hoverNode, EdgePtr& hoverEdge);
+            void draw(Vector2 offset, float scale, const Font& font, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
 
         private:
             HyperGraphPtr _root;
-
-            NodePtr _grabbedNode = nullptr;
-            Vector2 _grabOff = Vector2Zero();
 
             bool physicsEnabled = false;
 

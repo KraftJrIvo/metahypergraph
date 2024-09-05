@@ -1,16 +1,47 @@
 #include "hypergraph.h"
 #include "raylib.h"
 #include <cmath>
+#include <cstddef>
 #include <string>
 
 namespace mhg {
 
-    float Node::getDistToBorder(float angle, float scale) {
-        if (hyper) {
-            float thick = std::clamp(2 * EDGE_THICK, 1.0f, EDGE_THICK * 2) / scale;
-            return thick;
-        }
-        return NODE_SZ;
+    size_t Node::maxLinks() {
+        size_t maxLinks = 0;
+        for (auto& e : edgesIn)
+            maxLinks = std::max(e->links.size(), maxLinks);
+        for (auto& e : edgesOut)
+            maxLinks = std::max(e->links.size(), maxLinks);
+        return maxLinks;
+    }
+
+    size_t Node::nLinks() {
+        size_t nLinks = 0;
+        for (auto& e : edgesIn)
+            nLinks += e->links.size();
+        for (auto& e : edgesOut)
+            nLinks += e->links.size();
+        return nLinks;
+    }
+
+    EdgePtr Node::edgeTo(NodePtr node) {
+        for (auto& e : edgesIn)
+            if (e->from == node || e->to == node)
+                return e;
+        for (auto& e : edgesOut)
+            if (e->from == node || e->to == node)
+                return e;
+        return nullptr;
+    }
+
+    EdgePtr Node::similarEdge(EdgePtr edge) {
+        for (auto& e : edgesIn)
+            if (e->similar(edge))
+                return e;
+        for (auto& e : edgesOut)
+            if (e->similar(edge))
+                return e;
+        return nullptr;
     }
 
     void Node::predraw(Vector2 origin, Vector2 offset, float scale, const Font& font) {
@@ -18,7 +49,7 @@ namespace mhg {
         Vector2 posmod = origin + pos * ls + offset;
         _posCache = posmod;
         if (hyper) {
-            float r = std::clamp(2 * EDGE_THICK * ls, 1.0f, EDGE_THICK * 2);
+            float r = std::clamp((1 + maxLinks()) * EDGE_THICK * ls, 1.0f, (1 + maxLinks()) * EDGE_THICK);
             _rCache = r;
         } else {
             float thick = std::clamp(NODE_BORDER * ls, 1.0f, NODE_BORDER);
@@ -38,7 +69,7 @@ namespace mhg {
         } else {
             float r = NODE_SZ * ls;
             hover = (r * r > Vector2DistanceSqr(GetMousePosition(), posmod));
-            bool hasContent = content && content->nDrawableNodes;
+            bool hasContent = content && content->nodesCount();
             bool drawContent = (hasContent && ls > HIDE_CONTENT_SCALE);
             Color c = editing ? BLUE : ((hasContent && !drawContent) ? Color{ 140, 140, 140, 255 } : DARKGRAY);
             DrawCircleV(posmod, r, c);

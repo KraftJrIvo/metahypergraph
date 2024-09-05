@@ -19,6 +19,7 @@ set(MHG_SOURCE_FILES
     "src/util/kamada_kawai.cpp"
     "src/drawer.cpp"
     "src/main.cpp"
+    "res/icon.rc"
 )
 add_executable(MHG ${MHG_SOURCE_FILES})
 target_include_directories(MHG PUBLIC "src")

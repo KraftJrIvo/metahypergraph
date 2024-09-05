@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <list>
 #include <map>
 
@@ -18,6 +19,7 @@ namespace mhg {
             int lvl = 0;
             float coeff();
             float scale();
+            size_t nodesCount();
             int nDrawableNodes = 0;
             int _nDrawableNodesCache = -1;
             float _scaleCache;
@@ -27,10 +29,10 @@ namespace mhg {
             NodePtr addNode(HyperGraphPtr self, const std::string& label, const Color& color, bool via = false, bool hyper = false);
             void removeNode(NodePtr node, bool clear = true);
             void transferNode(HyperGraphPtr self, NodePtr node, bool moveEdges = true);
-            EdgePtr addEdge(HyperGraphPtr self, EdgeType type, NodePtr from, NodePtr to);
+            EdgePtr addEdge(HyperGraphPtr self, EdgeLinkStyle style, NodePtr from, NodePtr to);
             void removeEdge(EdgePtr edge, bool clear = true);
             void transferEdge(HyperGraphPtr self, EdgePtr edge);
-            NodePtr addHyperEdge(HyperGraphPtr self, EdgeType type, NodePtr from, const std::list<std::pair<EdgeType, NodePtr>>& tos);
+            NodePtr addHyperEdge(HyperGraphPtr self, const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
 
             void updateScale(int off);
             void recalcTower(NodePtr in, NodePtr from = nullptr);
@@ -43,7 +45,7 @@ namespace mhg {
             void recenter();
             void move(const Vector2 delta);
 
-            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgePtr& hoverEdge);
+            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
 
         private:

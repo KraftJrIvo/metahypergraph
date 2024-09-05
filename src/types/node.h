@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <string>
 #include <set>
 
@@ -35,7 +36,10 @@ namespace mhg {
             hg(hg), idx(idx), label(label), color(color), via(via), hyper(hyper)
         { }
 
-        float getDistToBorder(float angle, float scale);
+        size_t maxLinks();
+        size_t nLinks();
+        EdgePtr edgeTo(NodePtr node);
+        EdgePtr similarEdge(EdgePtr edge);
 
         void predraw(Vector2 origin, Vector2 offset, float scale, const Font& font);
         bool draw(Vector2 orign, Vector2 offset, float scale, const Font& font);

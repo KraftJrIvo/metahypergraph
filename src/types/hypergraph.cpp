@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include <cstddef>
 #include <iterator>
+#include <memory>
 
 namespace mhg {
 
@@ -14,7 +15,11 @@ namespace mhg {
     }
 
     float HyperGraph::coeff() {
-        return 1.0f / (nDrawableNodes + 0.5f);
+        return 1.0f / (nDrawableNodes + 1);
+    }
+    
+    size_t HyperGraph::nodesCount() {
+        return _nodes.size();
     }
 
     float HyperGraph::scale() {
@@ -30,7 +35,7 @@ namespace mhg {
     NodePtr HyperGraph::addNode(HyperGraphPtr self, const std::string &label, const Color &color, bool via, bool hyper) {
         size_t idx = _nodes.size() ? (_nodes.rbegin()->first + 1) : 0;
         auto node = std::make_shared<Node>(self, idx, label, color, via, hyper);
-        if (!via)
+        if (!via && !hyper)
             updateScale(1);
         _nodes[idx] = node;
         return node;
@@ -55,10 +60,8 @@ namespace mhg {
         }
         node->hg->removeNode(node, false);        
         node->hg = self;
-        if (!node->via)
+        if (!node->via && !node->hyper)
             updateScale(1);
-        if (_nodes.size() && _nodes.count(_nodes.rbegin()->first + 1))
-            std::cout << "!\n";
         size_t idx = _nodes.size() ? (_nodes.rbegin()->first + 1) : 0;
         node->idx = idx;
         _nodes[idx] = node;
@@ -80,7 +83,7 @@ namespace mhg {
             }
         }
         _nodes.erase(node->idx);
-        if (!node->via)
+        if (!node->via && !node->hyper)
             updateScale(-1);
     }
 
@@ -92,10 +95,16 @@ namespace mhg {
             n.second->pos = n.second->pos * preCoeff / aftCoeff;
     }
 
-    EdgePtr HyperGraph::addEdge(HyperGraphPtr self, EdgeType type, NodePtr from, NodePtr to) {
+    EdgePtr HyperGraph::addEdge(HyperGraphPtr self, EdgeLinkStyle style, NodePtr from, NodePtr to) {
+        auto sim = from->edgeTo(to);
+        if (sim) {
+            auto edge = std::make_shared<Edge>(0, style, from, nullptr, to);
+            sim->fuse(edge);
+            return sim;
+        }
         auto via = addNode(self, "", BLANK, true);
         size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
-        auto edge = std::make_shared<Edge>(idx, type, from, via, to);
+        auto edge = std::make_shared<Edge>(idx, style, from, via, to);
         _edges[idx] = edge;
         from->edgesOut.insert(edge);
         to->edgesIn.insert(edge);
@@ -103,24 +112,36 @@ namespace mhg {
     }
 
     void HyperGraph::removeEdge(EdgePtr edge, bool clear) {
-        if (clear) {
-            edge->to->edgesIn.erase(edge);
-            edge->from->edgesOut.erase(edge);
+        auto e = _edges[edge->idx];
+        e->remove(edge);
+        if (!e->links.size()) {
+            if (clear) {
+                edge->to->edgesIn.erase(edge);
+                edge->from->edgesOut.erase(edge);
+            }
+            _edges.erase(edge->idx);
         }
-        _edges.erase(edge->idx);
     }
             
     void HyperGraph::transferEdge(HyperGraphPtr self, EdgePtr edge) {
+        auto sim = edge->from->similarEdge(edge);
+        if (sim == edge)
+            return;
         edge->via->hg->removeEdge(edge, false);
+        if (sim) {
+            sim->fuse(edge);
+            return;
+        }
         size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
         edge->idx = idx;
         _edges[idx] = edge;
         self->transferNode(self, edge->via, false);
     }
 
-    NodePtr HyperGraph::addHyperEdge(HyperGraphPtr self, EdgeType type, NodePtr from, const std::list<std::pair<EdgeType, NodePtr>>& tos) {
+    NodePtr HyperGraph::addHyperEdge(HyperGraphPtr self, const EdgeLinksBundle& froms, const EdgeLinksBundle& tos) {
         auto hyperVia = addNode(self, "", BLANK, false, true);
-        addEdge(self, type, from, hyperVia);
+        for (auto& from : froms)
+            addEdge(self, from.first, hyperVia, from.second);
         for (auto& to : tos)
             addEdge(self, to.first, hyperVia, to.second);
         return hyperVia;
@@ -167,32 +188,32 @@ namespace mhg {
             n.second->pos += delta;
     }
 
-    void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgePtr& hoverEdge) {
+    void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink) {
         origin += (parent ? (parent->hg->scale() * parent->pos) : Vector2Zero());
         Vector2 scaledOrigin = origin * s;
         for (auto& n : _nodes)
             if (!n.second->via)
                 n.second->predraw(scaledOrigin, offset, s, font);
+        for (auto& e : _edges) {
+            auto hoverLink = e.second->draw(scaledOrigin, offset, s, font, physics);
+            if (hoverLink)
+                hoverEdgeLink = std::make_shared<EdgeLinkHover>(e.second, *hoverLink);
+        }
         for (auto& n : _nodes) {
             if (!n.second->via) {
-                bool hover = n.second->draw(scaledOrigin, offset, s, font);            
-                if (hover)
+                if (n.second->draw(scaledOrigin, offset, s, font))
                     hoverNode = n.second;
             }
         }
         for (auto& n : _nodes)
             if (n.second->content && s * scale() > HIDE_CONTENT_SCALE)
-                n.second->content->draw(origin, offset, s, font, physics, grabbedNode, hoverNode, hoverEdge);
-        for (auto& e : _edges) {
-            bool hover = e.second->draw(scaledOrigin, offset, s, font, physics);
-            if (hover)
-                hoverEdge = e.second;
-        }
+                n.second->content->draw(origin, offset, s, font, physics, grabbedNode, hoverNode, hoverEdgeLink);
+
         if (grabbedNode && grabbedNode->hg.get() == this) {
             grabbedNode->predraw(scaledOrigin, offset, s, font);
             grabbedNode->draw(scaledOrigin, offset, s, font);
             if (grabbedNode->content && s * scale() > HIDE_CONTENT_SCALE)
-                grabbedNode->content->draw(origin, offset, s, font, physics, grabbedNode, hoverNode, hoverEdge);
+                grabbedNode->content->draw(origin, offset, s, font, physics, grabbedNode, hoverNode, hoverEdgeLink);
         }
     }
 

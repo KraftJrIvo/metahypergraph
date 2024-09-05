@@ -2,9 +2,9 @@
 #include "raylib.h"
 #include "raymath.h"
 
-void mhg::Edge::findArrowPositionBezier(bool atStart, float scale, Vector2& pos, float& angle, float& t) {
+void mhg::Edge::findArrowPositionBezier(Vector2 p0, Vector2 c1, Vector2 p2, bool atStart, float scale, Vector2& pos, float& angle, float& t) {
     auto node = atStart ? from : to;
-    auto nodepos = atStart ? _pts[0] : _pts[2];
+    auto nodepos = atStart ? p0 : p2;
     const int maxIterations = 30;
     const float threshold = 0.2;
     float low = 0, high = 1;
@@ -13,10 +13,9 @@ void mhg::Edge::findArrowPositionBezier(bool atStart, float scale, Vector2& pos,
     int iteration = 0;
     do {
         middle = (low + high) * 0.5;
-        pos = getPoint(middle);
+        pos = getPoint(p0, c1, p2, middle);
         float distToPt = Vector2Distance(pos, nodepos);
         angle = atan2(nodepos.y - pos.y, nodepos.x - pos.x);
-        //float distToBorder = node->getDistToBorder(angle, scale);
         float distToBorder = node->_rCache;
         float diff = distToBorder - distToPt;
         if (abs(diff) < threshold)
@@ -35,23 +34,23 @@ void mhg::Edge::findArrowPositionBezier(bool atStart, float scale, Vector2& pos,
     } while (low <= high && iteration < maxIterations);
 
     float t2 = middle + (atStart ? 0.01f : -0.01f);
-    Vector2 pos2 = getPoint(t2);
+    Vector2 pos2 = getPoint(p0, c1, p2, t2);
     angle = atan2(pos.y - pos2.y, pos.x - pos2.x);
     t = middle;
   } 
 
 #define SPLINE_SEGMENT_DIVISIONS 24
-bool mhg::Edge::DrawSplineSegmentBezierQuadraticPart(Vector2 p1, Vector2 c2, Vector2 p3, float thick, Color color, float start, float end)
+bool mhg::Edge::DrawSplineSegmentBezierQuadraticPart(Vector2 p0, Vector2 c1, Vector2 p2, float thick, Color color, float start, float end, bool highlight)
 {
     const float step = (end - start)/SPLINE_SEGMENT_DIVISIONS;
 
-    Vector2 previous = p1;
+    Vector2 previous = p0;
     if (start != 0) {
         float a = powf(1.0f - start, 2);
         float b = 2.0f*(1.0f - start)*start;
         float c = powf(start, 2);
-        previous.y = a*p1.y + b*c2.y + c*p3.y;
-        previous.x = a*p1.x + b*c2.x + c*p3.x;
+        previous.y = a*p0.y + b*c1.y + c*p2.y;
+        previous.x = a*p0.x + b*c1.x + c*p2.x;
     }
     bool hover = false;
     Vector2 current = { 0 };
@@ -68,8 +67,8 @@ bool mhg::Edge::DrawSplineSegmentBezierQuadraticPart(Vector2 p1, Vector2 c2, Vec
         float c = powf(t, 2);
 
         // NOTE: The easing functions aren't suitable here because they don't take a control point
-        current.y = a*p1.y + b*c2.y + c*p3.y;
-        current.x = a*p1.x + b*c2.x + c*p3.x;
+        current.y = a*p0.y + b*c1.y + c*p2.y;
+        current.x = a*p0.x + b*c1.x + c*p2.x;
 
         float dy = current.y - previous.y;
         float dx = current.x - previous.x;
