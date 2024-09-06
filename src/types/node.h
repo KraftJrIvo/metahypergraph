@@ -29,7 +29,7 @@ namespace mhg {
         Vector2 _posCache;
         float _rCache;
 
-        bool highlight = false;
+        float highlight = 0.0f;
         bool editing = false;
 
         Node(HyperGraphPtr hg, size_t idx, const std::string& label, const Color& color, bool via = false, bool hyper = false) :

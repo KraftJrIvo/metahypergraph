@@ -98,6 +98,10 @@ namespace mhg {
         edge->via->hg->removeEdge(edge);
     }
 
+    void MetaHyperGraph::reduceEdge(EdgePtr edge) {
+        edge->via->hg->reduceEdge(edge);
+    }
+
     NodePtr MetaHyperGraph::addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos) {
         int maxLvl = 0;
         NodePtr maxLvlNode = nullptr;
@@ -116,6 +120,10 @@ namespace mhg {
         auto hg = maxLvlNode ? maxLvlNode->hg : _root;
         auto hyperNode = hg->addHyperEdge(hg, froms, tos);
         return hyperNode;
+    }
+
+    NodePtr MetaHyperGraph::makeEdgeHyper(EdgePtr edge) {
+        return edge->via->hg->makeEdgeHyper(edge->via->hg, edge);
     }
 
     void MetaHyperGraph::reposition(unsigned int seed) {

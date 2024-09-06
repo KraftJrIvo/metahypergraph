@@ -112,26 +112,22 @@ namespace mhg {
     }
 
     void HyperGraph::removeEdge(EdgePtr edge, bool clear) {
-        auto e = _edges[edge->idx];
-        e->remove(edge);
-        if (!e->links.size()) {
-            if (clear) {
-                edge->to->edgesIn.erase(edge);
-                edge->from->edgesOut.erase(edge);
-            }
-            _edges.erase(edge->idx);
+        if (clear) {
+            edge->to->edgesIn.erase(edge);
+            edge->from->edgesOut.erase(edge);
         }
+        _edges.erase(edge->idx);
+    }
+
+    void HyperGraph::reduceEdge(EdgePtr edge, bool clear) {
+        auto e = _edges[edge->idx];
+        e->reduce(edge);
+        if (!e->links.size())
+            removeEdge(edge, clear);
     }
             
     void HyperGraph::transferEdge(HyperGraphPtr self, EdgePtr edge) {
-        auto sim = edge->from->similarEdge(edge);
-        if (sim == edge)
-            return;
         edge->via->hg->removeEdge(edge, false);
-        if (sim) {
-            sim->fuse(edge);
-            return;
-        }
         size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
         edge->idx = idx;
         _edges[idx] = edge;
@@ -141,10 +137,25 @@ namespace mhg {
     NodePtr HyperGraph::addHyperEdge(HyperGraphPtr self, const EdgeLinksBundle& froms, const EdgeLinksBundle& tos) {
         auto hyperVia = addNode(self, "", BLANK, false, true);
         for (auto& from : froms)
-            addEdge(self, from.first, hyperVia, from.second);
+            addEdge(self, from.first, from.second, hyperVia);
         for (auto& to : tos)
             addEdge(self, to.first, hyperVia, to.second);
         return hyperVia;
+    }
+
+    NodePtr HyperGraph::makeEdgeHyper(HyperGraphPtr self, EdgePtr edge) {
+        removeEdge(edge);
+        EdgeLinksBundle froms;
+        for (auto l : edge->links)
+            froms.push_back({l, edge->from});
+        EdgeLinksBundle tos;
+        for (auto l : edge->links)
+            tos.push_back({l, edge->to});
+        auto node = addHyperEdge(self, froms, tos);
+        node->pos = (edge->from->pos + edge->to->pos) * 0.5f;
+        (*node->edgesIn.begin())->reposition();
+        (*node->edgesOut.begin())->reposition();
+        return node;
     }
 
     void HyperGraph::reposition(unsigned int seed) {
@@ -210,6 +221,7 @@ namespace mhg {
                 n.second->content->draw(origin, offset, s, font, physics, grabbedNode, hoverNode, hoverEdgeLink);
 
         if (grabbedNode && grabbedNode->hg.get() == this) {
+            grabbedNode->highlight = HIGHLIGHT_INTENSITY;
             grabbedNode->predraw(scaledOrigin, offset, s, font);
             grabbedNode->draw(scaledOrigin, offset, s, font);
             if (grabbedNode->content && s * scale() > HIDE_CONTENT_SCALE)

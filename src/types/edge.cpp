@@ -42,7 +42,7 @@ namespace mhg {
         }
     }
 
-    void Edge::remove(EdgePtr edge) {
+    void Edge::reduce(EdgePtr edge) {
         auto elinks = edge->links;
         for (auto l : elinks) {
             auto it = links.find(l);
@@ -73,8 +73,8 @@ namespace mhg {
         Vector2 apos2; float angle2; float t2;
         findArrowPositionBezier(pt0, pt1, pt2, true, minLvlNodeScale, apos2, angle2, t2);
 
-        float fromSpreadStep = (2 * PI / (LINKS_DENSITY * from->nLinks()));
-        float toSpreadStep = (2 * PI / (LINKS_DENSITY * to->nLinks()));
+        float fromSpreadStep = (2 * PI / ((from->hyper ? 1 : LINKS_DENSITY) * from->nLinks()));
+        float toSpreadStep = (2 * PI / ((to->hyper ? 1 : LINKS_DENSITY) * to->nLinks()));
         float fromSpread = fromSpreadStep * links.size();
         float toSpread = toSpreadStep * links.size();
         float aFromStep = fromSpread / (links.size() + 1);
@@ -106,7 +106,7 @@ namespace mhg {
             float start = fromSameHG ? t2 : t1;
             float end   = fromSameHG ? t1 : t2;
             float thick = std::clamp(EDGE_THICK * maxLvlNodeScale, 1.0f, EDGE_THICK);
-            bool hover = DrawSplineSegmentBezierQuadraticPart(pt0m, pt1m, pt2m, thick, l.color, start, end, l.highlight);
+            bool hover = DrawSplineSegmentBezierQuadraticPart(pt0m, pt1m, pt2m, thick, l.color, start, end, std::max(l.highlight, highlight));
             if (hover)
                 hoverLink = links.find(l);
 
@@ -116,16 +116,16 @@ namespace mhg {
                 float arscl = std::clamp(EDGE_THICK * maxLvlNodeScale, 1.0f, EDGE_THICK) * ARROW_SZ;
                 if (l.foreward) {
                     Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle);
-                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * angle / PI, arscl, l.highlight ? ColorBrightness(l.color, 0.25f) : l.color);
+                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * angle / PI, arscl, ColorBrightness(l.color, std::max(l.highlight, highlight)));
                 }
                 if (l.backward) {
                     Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle2);
-                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * angle2 / PI, arscl, l.highlight ? ColorBrightness(l.color, 0.25f) : l.color);
+                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * angle2 / PI, arscl, ColorBrightness(l.color, std::max(l.highlight, highlight)));
                 }
             }
-            
+            l.highlight = 0.0f;
         }
-
+        highlight = 0.0f;
         if (hoverLink != links.end())
             return std::make_shared<EdgeLinkStyle>(*hoverLink);
         return nullptr;

@@ -55,7 +55,7 @@ namespace mhg {
             float thick = std::clamp(NODE_BORDER * ls, 1.0f, NODE_BORDER);
             float r = (NODE_SZ) * ls + thick;
             _rCache = (NODE_SZ) * ls;
-            DrawCircleV(posmod, r, highlight ? ColorBrightness({ 140, 140, 140, 255 }, 0.25f) : Color{ 140, 140, 140, 255 });
+            DrawCircleV(posmod, r, ColorBrightness({ 140, 140, 140, 255 }, highlight));
         }
     }
 
@@ -65,7 +65,7 @@ namespace mhg {
         bool hover;
         if (hyper) {
             hover = (_rCache * _rCache > Vector2DistanceSqr(GetMousePosition(), posmod));
-            DrawCircleV(posmod, _rCache, highlight ? ColorBrightness(RED, 0.25f) : RED);
+            DrawCircleV(posmod, _rCache, ColorBrightness(RED, highlight));
         } else {
             float r = NODE_SZ * ls;
             hover = (r * r > Vector2DistanceSqr(GetMousePosition(), posmod));
@@ -87,6 +87,7 @@ namespace mhg {
                 DrawTextEx(font, label.c_str(), txtpos, txtsz, 0, WHITE);
             }
         }
+        highlight = 0.0f;
         return hover;
     }
 

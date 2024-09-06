@@ -30,11 +30,14 @@ namespace mhg {
 
         NodePtr _hoverNode = nullptr;
         EdgeLinkHoverPtr _hoverEdgeLink = nullptr;
-        NodePtr _hoverNodePrv = nullptr;
-        EdgeLinkHoverPtr _hoverEdgeLinkPrv = nullptr;
 
         NodePtr _grabbedNode = nullptr;
         Vector2 _grabOff = Vector2Zero();
+
+        NodePtr _addEdgeFromNode = nullptr;
+        NodePtr _addEdgeToNode = nullptr;
+        EdgePtr _addEdgeFromEdge = nullptr;
+        EdgePtr _addEdgeToEdge = nullptr;
 
         std::string _labelPriorToEdit;
 
@@ -192,15 +195,48 @@ namespace mhg {
             } else if (IsKeyPressed(KEY_DELETE)) {
                 if (_hoverEdgeLink) {
                     auto e = std::make_shared<Edge>(_hoverEdgeLink->first->idx, _hoverEdgeLink->second, _hoverEdgeLink->first->from, _hoverEdgeLink->first->via, _hoverEdgeLink->first->to);
-                    _mhg.removeEdge(e);
+                    _mhg.reduceEdge(e);
                     _hoverEdgeLink = nullptr;
-                    _hoverEdgeLinkPrv = nullptr;
                 } else if (_hoverNode) {
                     _mhg.removeNode(_hoverNode);
                     _hoverNode = nullptr;
-                    _hoverNodePrv = nullptr;
                 }
             }
+
+            if (IsKeyPressed(KEY_E)) {
+                if (_hoverEdgeLink) {
+                    _addEdgeFromEdge = _hoverEdgeLink->first;
+                } else if (_hoverNode) {
+                    _addEdgeFromNode = _hoverNode;
+                }
+            }
+            if (IsKeyDown(KEY_E) && (_addEdgeFromNode || _addEdgeFromEdge)) {
+                if (_hoverEdgeLink && _hoverEdgeLink->first != _addEdgeFromEdge) {
+                    _addEdgeToEdge = _hoverEdgeLink->first;
+                    _addEdgeToNode = nullptr;
+                } else if (_hoverNode && _hoverNode != _addEdgeFromNode) {
+                    _addEdgeToNode = _hoverNode;
+                    _addEdgeToEdge = nullptr;
+                }
+                if (!_hoverNode)
+                    _addEdgeToNode = nullptr;
+                if (!_hoverEdgeLink)
+                    _addEdgeToEdge = nullptr;
+            }
+            if (IsKeyReleased(KEY_E)) {
+                if ((_addEdgeFromNode || _addEdgeFromEdge) && (_addEdgeToNode || _addEdgeToEdge)) {
+                    auto from = _addEdgeFromNode ? _addEdgeFromNode : _mhg.makeEdgeHyper(_addEdgeFromEdge);
+                    auto to = _addEdgeToNode ? _addEdgeToNode : _mhg.makeEdgeHyper(_addEdgeToEdge);
+                    _mhg.addEdge(EdgeLinkStyle{}, from, to);
+                }
+                _addEdgeFromNode = nullptr;
+                _addEdgeFromEdge = nullptr;
+                _addEdgeToNode = nullptr;
+                _addEdgeToEdge = nullptr;
+            }
+            if (IsKeyPressed(KEY_H))
+                if (_hoverEdgeLink)
+                    _mhg.makeEdgeHyper(_hoverEdgeLink->first);
         }
     }
 
@@ -209,13 +245,18 @@ namespace mhg {
         ClearBackground(BLACK);
         _hoverNode = nullptr;
         _hoverEdgeLink = nullptr;
-        if (_hoverEdgeLinkPrv) _hoverEdgeLinkPrv->first->links.find(_hoverEdgeLinkPrv->second)->highlight = true;
-        if (_hoverNodePrv) _hoverNodePrv->highlight = true;
         _mhg.draw(_offset + _curOffset, _scale, _font, _grabbedNode, _hoverNode, _hoverEdgeLink);
-        if (_hoverEdgeLinkPrv) _hoverEdgeLinkPrv->first->links.find(_hoverEdgeLinkPrv->second)->highlight = false;
-        if (_hoverNodePrv) _hoverNodePrv->highlight = false;
-        _hoverEdgeLinkPrv = _grabbedNode ? nullptr : _hoverEdgeLink;
-        _hoverNodePrv = _grabbedNode ? _grabbedNode : _hoverNode;
+        if (_addEdgeFromNode || _addEdgeFromEdge) {
+            auto from = _addEdgeFromNode ? _addEdgeFromNode->_posCache : (_addEdgeFromEdge->from->_posCache + _addEdgeFromEdge->to->_posCache) * 0.5f;
+            auto to = GetMousePosition();
+            DrawLineEx(from, to, EDGE_THICK, WHITE);
+        }
+        if (_hoverEdgeLink) _hoverEdgeLink->first->links.find(_hoverEdgeLink->second)->highlight = HIGHLIGHT_INTENSITY;
+        if (_hoverNode) _hoverNode->highlight = HIGHLIGHT_INTENSITY;
+        if (_addEdgeFromNode) _addEdgeFromNode->highlight = HIGHLIGHT_INTENSITY_2;
+        if (_addEdgeFromEdge) _addEdgeFromEdge->highlight = HIGHLIGHT_INTENSITY_2;
+        if (_addEdgeToNode) _addEdgeToNode->highlight = HIGHLIGHT_INTENSITY_2;
+        if (_addEdgeToEdge) _addEdgeToEdge->highlight = HIGHLIGHT_INTENSITY_2;
         EndDrawing();
     }
 

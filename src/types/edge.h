@@ -21,7 +21,7 @@ namespace mhg {
         mutable float weight = 1.0f;
         mutable bool foreward = true;
         mutable bool backward = false;
-        mutable bool highlight = false;
+        mutable float highlight = 0.0f;
 
         bool operator==(const EdgeLinkStyle& rhs) const {
             return color.r == rhs.color.r && color.g == rhs.color.g && color.b == rhs.color.b && color.a == rhs.color.a && label == rhs.label; 
@@ -46,6 +46,8 @@ namespace mhg {
         NodePtr via;
         NodePtr to;
 
+        float highlight = 0.0f;
+
         static Texture2D getArrowHead();
 
         Edge(size_t idx, EdgeLinkStyle style, NodePtr from, NodePtr via, NodePtr to) :
@@ -54,10 +56,10 @@ namespace mhg {
 
         bool similar(EdgePtr edge);
         void fuse(EdgePtr edge);
-        void remove(EdgePtr edge);
+        void reduce(EdgePtr edge);
 
         void findArrowPositionBezier(Vector2 p0, Vector2 c1, Vector2 p2, bool atStart, float scale, Vector2& at, float& angle, float& t);
-        bool DrawSplineSegmentBezierQuadraticPart(Vector2 p0, Vector2 c1, Vector2 p2, float thick, Color color, float start, float end, bool highlight);
+        bool DrawSplineSegmentBezierQuadraticPart(Vector2 p0, Vector2 c1, Vector2 p2, float thick, Color color, float start, float end, float highlight);
         Vector2 getPoint(Vector2 p0, Vector2 c1, Vector2 p2, float t);
         void reposition();
 
