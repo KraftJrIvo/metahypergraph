@@ -29,19 +29,20 @@ namespace mhg {
         bool operator<(const EdgeLinkStyle& rhs) const {
             size_t c1 = col2num(color);
             size_t c2 = col2num(rhs.color);
-            return (label < rhs.label) || (label == rhs.label && c1 < c2) || (label == rhs.label && c1 == c2 && weight < rhs.weight);
+            return (label < rhs.label) || (label == rhs.label && c1 < c2);// || (label == rhs.label && c1 == c2 && weight < rhs.weight);
         }
     };
 
     typedef std::list<std::pair<EdgeLinkStyle, NodePtr>> EdgeLinksBundle;
 
+    typedef std::set<EdgeLinkStyle> EdgeLinks;
     typedef std::shared_ptr<EdgeLinkStyle> EdgeLinkPtr;
     typedef std::pair<EdgePtr, EdgeLinkStyle> EdgeLinkHover;
     typedef std::shared_ptr<EdgeLinkHover> EdgeLinkHoverPtr;
 
     struct Edge {
         size_t idx;
-        std::set<EdgeLinkStyle> links;
+        EdgeLinks links;
         NodePtr from;
         NodePtr via;
         NodePtr to;

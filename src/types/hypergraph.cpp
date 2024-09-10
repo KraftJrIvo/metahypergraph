@@ -33,12 +33,15 @@ namespace mhg {
     }
 
     NodePtr HyperGraph::addNode(HyperGraphPtr self, const std::string &label, const Color &color, bool via, bool hyper) {
-        size_t idx = _nodes.size() ? (_nodes.rbegin()->first + 1) : 0;
-        auto node = std::make_shared<Node>(self, idx, label, color, via, hyper);
-        if (!via && !hyper)
-            updateScale(1);
-        _nodes[idx] = node;
+        auto node = std::make_shared<Node>(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, label, color, via, hyper);
+        addNode(self, node);
         return node;
+    }
+
+    void HyperGraph::addNode(HyperGraphPtr self, NodePtr node) {
+        if (!node->via && !node->hyper)
+            updateScale(1);
+        _nodes[node->idx] = node;
     }
     
     void HyperGraph::transferNode(HyperGraphPtr self, NodePtr node, bool moveEdges) {
@@ -98,17 +101,21 @@ namespace mhg {
     EdgePtr HyperGraph::addEdge(HyperGraphPtr self, EdgeLinkStyle style, NodePtr from, NodePtr to) {
         auto sim = from->edgeTo(to);
         if (sim) {
-            auto edge = std::make_shared<Edge>(0, style, from, nullptr, to);
+            auto edge = std::make_shared<Edge>(-1, style, from, nullptr, to);
             sim->fuse(edge);
             return sim;
         }
-        auto via = addNode(self, "", BLANK, true);
-        size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
-        auto edge = std::make_shared<Edge>(idx, style, from, via, to);
-        _edges[idx] = edge;
-        from->edgesOut.insert(edge);
-        to->edgesIn.insert(edge);
+        auto via = std::make_shared<Node>(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, "", BLANK, true, false);
+        auto edge = std::make_shared<Edge>(_edges.size() ? (_edges.rbegin()->first + 1) : 0, style, from, via, to);
+        addEdge(self, edge);
         return edge;
+    }
+
+    void HyperGraph::addEdge(HyperGraphPtr self, EdgePtr edge) {
+        addNode(self, edge->via);
+        _edges[edge->idx] = edge;
+        edge->from->edgesOut.insert(edge);
+        edge->to->edgesIn.insert(edge);
     }
 
     void HyperGraph::removeEdge(EdgePtr edge, bool clear) {
@@ -116,6 +123,7 @@ namespace mhg {
             edge->to->edgesIn.erase(edge);
             edge->from->edgesOut.erase(edge);
         }
+        removeNode(edge->via);
         _edges.erase(edge->idx);
     }
 
@@ -123,7 +131,7 @@ namespace mhg {
         auto e = _edges[edge->idx];
         e->reduce(edge);
         if (!e->links.size())
-            removeEdge(edge, clear);
+            removeEdge(e, clear);
     }
             
     void HyperGraph::transferEdge(HyperGraphPtr self, EdgePtr edge) {

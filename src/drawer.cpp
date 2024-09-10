@@ -32,6 +32,7 @@ namespace mhg {
         EdgeLinkHoverPtr _hoverEdgeLink = nullptr;
 
         NodePtr _grabbedNode = nullptr;
+        Vector2 _grabbedInitPos = Vector2Zero();
         Vector2 _grabOff = Vector2Zero();
 
         NodePtr _addEdgeFromNode = nullptr;
@@ -133,18 +134,22 @@ namespace mhg {
             auto mpos = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && _hoverNode) {
                 _grabbedNode = _hoverNode;
+                _grabbedInitPos = _hoverNode->pos;
                 _grabOff = (_scale * _hoverNode->hg->scale() * _hoverNode->pos + _offset) - mpos;
             } else if (_grabbedNode) {
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                    auto dropNode = _mhg.getNodeAt(_grabbedNode->_posCache, {_grabbedNode});
-                    auto dropHG = dropNode ? dropNode->content : _mhg._root;
-                    if (dropHG != _grabbedNode->hg) {
-                        if (!dropHG)
-                            dropHG = dropNode->content = std::make_shared<HyperGraph>(dropNode);
-                        dropHG->transferNode(dropHG, _grabbedNode);
-                        auto o = (dropHG == _mhg._root) ? _offset : dropNode->_posCache;
-                        _grabbedNode->pos = (_grabbedNode->_posCache - o) / (dropHG->scale() * _scale);
+                    if (!_grabbedNode->via && !_grabbedNode->hyper) {
+                        auto dropNode = _mhg.getNodeAt(_grabbedNode->_posCache, {_grabbedNode});
+                        auto dropHG = dropNode ? dropNode->content : _mhg._root;
+                        if (dropHG != _grabbedNode->hg) {
+                            if (!dropHG)
+                                dropHG = dropNode->content = std::make_shared<HyperGraph>(dropNode);
+                            _mhg.transferNode(dropHG, _grabbedNode);
+                            auto o = (dropHG == _mhg._root) ? _offset : dropNode->_posCache;
+                            _grabbedNode->pos = (_grabbedNode->_posCache - o) / (dropHG->scale() * _scale);
+                        }
                     }
+                    _mhg.moveNode(_grabbedNode, _grabbedInitPos, _grabbedNode->pos);
                     _grabbedNode = nullptr;
                 } else {
                     float ls = _grabbedNode->hg->scale() * _scale;
@@ -189,7 +194,7 @@ namespace mhg {
                 node->hyper = IsKeyDown(KEY_LEFT_SHIFT);
                 auto hg = _hoverNode ? _hoverNode->content : _mhg._root;
                 auto o = _hoverNode ? _hoverNode->_posCache : _offset;
-                node->pos = (mpos - o) / (hg->scale() * _scale);
+                _mhg.moveNode(node, Vector2Zero(), (mpos - o) / (hg->scale() * _scale));
                 if (!node->hyper)
                     _startEditingNode(node);
             } else if (IsKeyPressed(KEY_DELETE)) {
@@ -226,7 +231,9 @@ namespace mhg {
             if (IsKeyReleased(KEY_E)) {
                 if ((_addEdgeFromNode || _addEdgeFromEdge) && (_addEdgeToNode || _addEdgeToEdge)) {
                     auto from = _addEdgeFromNode ? _addEdgeFromNode : _mhg.makeEdgeHyper(_addEdgeFromEdge);
+                    if (_mhg._historyRecording && !_addEdgeFromNode) _mhg._histIt-=2;
                     auto to = _addEdgeToNode ? _addEdgeToNode : _mhg.makeEdgeHyper(_addEdgeToEdge);
+                    if (_mhg._historyRecording && !_addEdgeToNode) _mhg._histIt-=2;
                     _mhg.addEdge(EdgeLinkStyle{}, from, to);
                 }
                 _addEdgeFromNode = nullptr;
@@ -237,6 +244,14 @@ namespace mhg {
             if (IsKeyPressed(KEY_H))
                 if (_hoverEdgeLink)
                     _mhg.makeEdgeHyper(_hoverEdgeLink->first);
+            
+            // HISTORY
+            if (IsKeyDown(KEY_LEFT_CONTROL)) {
+                if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_Z))
+                    _mhg.undo();
+                if (IsKeyPressed(KEY_Y) || (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_Z)))
+                    _mhg.redo();
+            }
         }
     }
 

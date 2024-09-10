@@ -30,25 +30,27 @@ namespace mhg {
     }
 
     void Edge::fuse(EdgePtr edge) {
+        bool inv = edge->from != from;
         for (auto l : edge->links) {
             auto it = links.find(l);
             if (it == links.end()) {
                 links.insert(l);
             } else {
-                it->foreward |= l.foreward;
-                it->backward |= l.foreward;
+                it->foreward |= inv ? l.backward : l.foreward;
+                it->backward |= inv ? l.foreward : l.backward;
                 it->weight += l.weight;
             }
         }
     }
 
     void Edge::reduce(EdgePtr edge) {
+        bool inv = edge->from != from;
         auto elinks = edge->links;
         for (auto l : elinks) {
             auto it = links.find(l);
             if (it != links.end()) {
-                if (l.foreward) it->foreward = false;
-                if (l.backward) it->backward = false;
+                if ((inv && l.backward) || (!inv && l.foreward)) it->foreward = false;
+                if ((inv && l.foreward) || (!inv && l.backward)) it->backward = false;
                 if (!it->foreward && !it->backward)
                     links.erase(l);
             }

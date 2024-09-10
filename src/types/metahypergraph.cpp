@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace mhg {
     void MetaHyperGraph::clear() {
@@ -12,6 +13,7 @@ namespace mhg {
 
     void MetaHyperGraph::init() {
         _lock.lock();
+        _historyRecording = false;
         if (!_root)
             _root = std::make_shared<HyperGraph>();
         clear();
@@ -72,6 +74,7 @@ namespace mhg {
         addEdge(stl, m5, m1);
 
         reposition();
+        _historyRecording = true;
         _lock.unlock();
     }
 
@@ -82,23 +85,61 @@ namespace mhg {
                 parent->content = std::make_shared<HyperGraph>(parent);
             hg = parent->content;
         }
-        return hg->addNode(hg, label, color);
+        auto node = hg->addNode(hg, label, color);
+        if (_historyRecording)
+            _addToHistory(MHGaction{.type = MHGactionType::NODE, .inverse = false, .n = node}, false);
+        return node;
+    }
+
+    void MetaHyperGraph::_addNode(NodePtr node) {
+        node->hg->addNode(node->hg, node);
     }
 
     void MetaHyperGraph::removeNode(NodePtr node) {
+        if (_historyRecording) {
+            auto edgesIn = node->edgesIn;
+            for (auto& e : edgesIn)
+                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e}, false);
+            auto edgesOut = node->edgesOut;
+            for (auto& e : edgesOut)
+                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e}, false);
+            _addToHistory(MHGaction{.type = MHGactionType::NODE, .inverse = true, .n = node, .cur = node->pos});
+        }
         node->hg->removeNode(node);
+    }
+
+    void MetaHyperGraph::moveNode(NodePtr node, Vector2 prvPos, Vector2 newPos) {
+        _addToHistory(MHGaction{.type = MHGactionType::MOVE, .inverse = false, .n = node, .prv = prvPos, .cur = newPos});
+        node->pos = newPos;
+    }
+
+    void MetaHyperGraph::transferNode(HyperGraphPtr to, NodePtr node) {
+        if (_historyRecording)
+            _addToHistory(MHGaction{.type = MHGactionType::TRANSFER, .inverse = false, .hg = to, .from = node->hg, .n = node}, false);
+        to->transferNode(to, node);
     }
 
     EdgePtr MetaHyperGraph::addEdge(EdgeLinkStyle style, NodePtr from, NodePtr to) {
         auto hg = (from->hg->lvl > to->hg->lvl) ? from->hg : to->hg;
-        return hg->addEdge(hg, style, from, to);
+        auto edge = hg->addEdge(hg, style, from, to);
+        if (_historyRecording)
+            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = (from->edgeTo(to)) ? std::make_shared<Edge>(edge->idx, style, from, edge->via, to) : edge, .els = style});
+        return edge;
+    }
+
+    void MetaHyperGraph::_addEdge(EdgePtr edge) {
+        edge->via->hg->addEdge(edge->via->hg, edge);
     }
 
     void MetaHyperGraph::removeEdge(EdgePtr edge) {
+        if (_historyRecording)
+            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()});
         edge->via->hg->removeEdge(edge);
     }
 
     void MetaHyperGraph::reduceEdge(EdgePtr edge) {
+        if (_historyRecording)
+            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()});
         edge->via->hg->reduceEdge(edge);
     }
 
@@ -123,7 +164,18 @@ namespace mhg {
     }
 
     NodePtr MetaHyperGraph::makeEdgeHyper(EdgePtr edge) {
-        return edge->via->hg->makeEdgeHyper(edge->via->hg, edge);
+        if (_historyRecording)
+            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()}, false);
+        auto hyperNode = edge->via->hg->makeEdgeHyper(edge->via->hg, edge);
+        if (_historyRecording) {
+            _addToHistory(MHGaction{.type = MHGactionType::NODE, .inverse = false, .n = hyperNode, .cur = hyperNode->pos}, false);
+            for (auto& e : hyperNode->edgesIn)
+                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = e, .els = *e->links.begin()}, false);
+            for (auto& e : hyperNode->edgesOut)
+                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = e, .els = *e->links.begin()}, false);
+            _addToHistory(MHGaction{.type = MHGactionType::SEP}, false);
+        }
+        return hyperNode;
     }
 
     void MetaHyperGraph::reposition(unsigned int seed) {
@@ -134,9 +186,104 @@ namespace mhg {
         return _root->getCenter();
     }
 
+    void MetaHyperGraph::_addToHistory(const MHGaction& action, bool sep) {
+        int n = (_history.end() - _histIt - 1);
+        for (int i = 0; i < n; ++i)
+            _history.pop_back();
+        _history.push_back(action);
+        if (sep)
+            _history.push_back(MHGaction{.type = MHGactionType::SEP});
+        _histIt = _history.end();
+    }
+
+    void MetaHyperGraph::_doAction(const MHGaction& action, bool inverse) {
+        bool inv = (action.inverse ^ inverse);
+        switch (action.type) {
+        case MHGactionType::NODE:
+            if (inv) removeNode(action.n); 
+            else _addNode(action.n);
+            break;
+        case MHGactionType::EDGE:
+            if (inv) reduceEdge(std::make_shared<Edge>(action.e->idx, action.els, action.e->from, action.e->via, action.e->to)); 
+            else {
+                if (!action.e->via->hg->hasEdgeIdx(action.e->idx))
+                    _addEdge(action.e);
+                addEdge(action.els, action.e->from, action.e->to);
+            }
+            break;
+        case MHGactionType::TRANSFER:
+            transferNode(inv ? action.from : action.hg, action.n);
+            break;
+        case MHGactionType::MOVE:
+            action.n->pos = inv ? action.prv : action.cur;
+            break;
+        default:
+            break;
+        }
+    }
+
+    void MetaHyperGraph::undo() {
+        if (_histIt != _history.begin()) {
+            _historyRecording = false;
+            if (_histIt == _history.end())
+                _histIt--;
+            if (_histIt != _history.begin() && _histIt->type == MHGactionType::SEP)
+                _histIt--;
+            while (_histIt->type != MHGactionType::SEP) {
+                _doAction(*_histIt, true);
+                _histIt--;
+            }
+            _historyRecording = true;
+        }
+    }
+
+    void MetaHyperGraph::redo() {
+        if (_histIt != _history.end()) {
+            _historyRecording = false;
+            if (_histIt->type == MHGactionType::SEP)
+                _histIt++;
+            while (_histIt != _history.end() && _histIt->type != MHGactionType::SEP) {
+                _doAction(*_histIt, false);
+                _histIt++;
+            }
+            _historyRecording = true;
+        }
+    }
+
+
     void MetaHyperGraph::draw(Vector2 offset, float scale, const Font& font, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink) {
         _lock.lock();
-        _root->draw(Vector2Zero(), offset, scale, font, physicsEnabled, grabbedNode, hoverNode, hoverEdgeLink);
+        _root->draw(Vector2Zero(), offset, scale, font, _physicsEnabled, grabbedNode, hoverNode, hoverEdgeLink);
+        //int c = 0;
+        //int n = _history.size() - (_history.end() - _histIt);
+        //for (auto& a : _history) {
+        //    std::string m = "";
+        //    switch (a.type) {
+        //        case MHGactionType::NODE:
+        //            m += "NODE";
+        //            break;
+        //        case MHGactionType::EDGE:
+        //            m += "EDGE";
+        //            break;
+        //        case MHGactionType::TRANSFER:
+        //            m += "TRANSFER";
+        //            break;
+        //        case MHGactionType::MOVE:
+        //            m += "MOVE";
+        //            break;
+        //        case MHGactionType::SEP:
+        //            m += "SEP";
+        //            break;
+        //        default:
+        //            break;
+        //    }
+        //    DrawText(m.c_str(), 20, c * 32, 32, WHITE);
+        //    if (c == n)
+        //        DrawCircle(0, c * 32, 10, WHITE);
+        //    c++;
+        //}
+        //if (_histIt == _history.end())
+        //    DrawCircle(0, _history.size() * 32, 10, WHITE);
         _lock.unlock();
     }
 

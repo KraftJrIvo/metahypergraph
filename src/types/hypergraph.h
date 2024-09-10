@@ -27,9 +27,11 @@ namespace mhg {
             void clear();
 
             NodePtr addNode(HyperGraphPtr self, const std::string& label, const Color& color, bool via = false, bool hyper = false);
+            void addNode(HyperGraphPtr self, NodePtr node);
             void removeNode(NodePtr node, bool clear = true);
             void transferNode(HyperGraphPtr self, NodePtr node, bool moveEdges = true);
             EdgePtr addEdge(HyperGraphPtr self, EdgeLinkStyle style, NodePtr from, NodePtr to);
+            void addEdge(HyperGraphPtr self, EdgePtr edge);
             void removeEdge(EdgePtr edge, bool clear = true);
             void reduceEdge(EdgePtr edge, bool clear = true);
             void transferEdge(HyperGraphPtr self, EdgePtr edge);
@@ -50,6 +52,8 @@ namespace mhg {
             void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
 
+            bool hasNodeIdx(size_t idx) {return _nodes.count(idx);}
+            bool hasEdgeIdx(size_t idx) {return _edges.count(idx);}
         private:
             std::map<size_t, NodePtr> _nodes;
             std::map<size_t, EdgePtr> _edges;
