@@ -35,7 +35,6 @@ namespace mhg {
             void reduceEdge(EdgePtr edge);
             NodePtr addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
             NodePtr makeEdgeHyper(EdgePtr edge);
-            void unmakeEdgeHyper(NodePtr hyperNode);
 
             void reposition(unsigned int seed = 0);
             Vector2 getCenter();
@@ -59,7 +58,7 @@ namespace mhg {
 
             void _addNode(NodePtr node);
             void _addEdge(EdgePtr edge);
-            void _addToHistory(const MHGaction& action, bool sep = true);
+            void _noticeAction(const MHGaction& action, bool sep = true);
             void _doAction(const MHGaction& action, bool inverse);
     };
 }

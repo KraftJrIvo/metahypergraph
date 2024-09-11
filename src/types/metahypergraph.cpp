@@ -86,8 +86,7 @@ namespace mhg {
             hg = parent->content;
         }
         auto node = hg->addNode(hg, label, color);
-        if (_historyRecording)
-            _addToHistory(MHGaction{.type = MHGactionType::NODE, .inverse = false, .n = node}, false);
+        _noticeAction(MHGaction{.type = MHGactionType::NODE, .inverse = false, .n = node}, false);
         return node;
     }
 
@@ -99,31 +98,30 @@ namespace mhg {
         if (_historyRecording) {
             auto edgesIn = node->edgesIn;
             for (auto& e : edgesIn)
-                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e}, false);
+                _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e}, false);
             auto edgesOut = node->edgesOut;
             for (auto& e : edgesOut)
-                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e}, false);
-            _addToHistory(MHGaction{.type = MHGactionType::NODE, .inverse = true, .n = node, .cur = node->pos});
+                _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e}, false);
+            _noticeAction(MHGaction{.type = MHGactionType::NODE, .inverse = true, .n = node, .cur = node->pos});
         }
         node->hg->removeNode(node);
     }
 
     void MetaHyperGraph::moveNode(NodePtr node, Vector2 prvPos, Vector2 newPos) {
-        _addToHistory(MHGaction{.type = MHGactionType::MOVE, .inverse = false, .n = node, .prv = prvPos, .cur = newPos});
+        _noticeAction(MHGaction{.type = MHGactionType::MOVE, .inverse = false, .n = node, .prv = prvPos, .cur = newPos});
         node->pos = newPos;
     }
 
     void MetaHyperGraph::transferNode(HyperGraphPtr to, NodePtr node) {
         if (_historyRecording)
-            _addToHistory(MHGaction{.type = MHGactionType::TRANSFER, .inverse = false, .hg = to, .from = node->hg, .n = node}, false);
+            _noticeAction(MHGaction{.type = MHGactionType::TRANSFER, .inverse = false, .hg = to, .from = node->hg, .n = node}, false);
         to->transferNode(to, node);
     }
 
     EdgePtr MetaHyperGraph::addEdge(EdgeLinkStyle style, NodePtr from, NodePtr to) {
         auto hg = (from->hg->lvl > to->hg->lvl) ? from->hg : to->hg;
         auto edge = hg->addEdge(hg, style, from, to);
-        if (_historyRecording)
-            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = (from->edgeTo(to)) ? std::make_shared<Edge>(edge->idx, style, from, edge->via, to) : edge, .els = style});
+        _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = (from->edgeTo(to)) ? std::make_shared<Edge>(edge->idx, style, from, edge->via, to) : edge, .els = style});
         return edge;
     }
 
@@ -132,14 +130,12 @@ namespace mhg {
     }
 
     void MetaHyperGraph::removeEdge(EdgePtr edge) {
-        if (_historyRecording)
-            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()});
+        _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()});
         edge->via->hg->removeEdge(edge);
     }
 
     void MetaHyperGraph::reduceEdge(EdgePtr edge) {
-        if (_historyRecording)
-            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()});
+        _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()});
         edge->via->hg->reduceEdge(edge);
     }
 
@@ -164,16 +160,15 @@ namespace mhg {
     }
 
     NodePtr MetaHyperGraph::makeEdgeHyper(EdgePtr edge) {
-        if (_historyRecording)
-            _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()}, false);
+        _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = *edge->links.begin()}, false);
         auto hyperNode = edge->via->hg->makeEdgeHyper(edge->via->hg, edge);
         if (_historyRecording) {
-            _addToHistory(MHGaction{.type = MHGactionType::NODE, .inverse = false, .n = hyperNode, .cur = hyperNode->pos}, false);
+            _noticeAction(MHGaction{.type = MHGactionType::NODE, .inverse = false, .n = hyperNode, .cur = hyperNode->pos}, false);
             for (auto& e : hyperNode->edgesIn)
-                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = e, .els = *e->links.begin()}, false);
+                _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = e, .els = *e->links.begin()}, false);
             for (auto& e : hyperNode->edgesOut)
-                _addToHistory(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = e, .els = *e->links.begin()}, false);
-            _addToHistory(MHGaction{.type = MHGactionType::SEP}, false);
+                _noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = false, .e = e, .els = *e->links.begin()}, false);
+            _noticeAction(MHGaction{.type = MHGactionType::SEP}, false);
         }
         return hyperNode;
     }
@@ -186,7 +181,9 @@ namespace mhg {
         return _root->getCenter();
     }
 
-    void MetaHyperGraph::_addToHistory(const MHGaction& action, bool sep) {
+    void MetaHyperGraph::_noticeAction(const MHGaction& action, bool sep) {
+        if (!_historyRecording)
+            return;
         int n = (_history.end() - _histIt - 1);
         for (int i = 0; i < n; ++i)
             _history.pop_back();
@@ -254,36 +251,6 @@ namespace mhg {
     void MetaHyperGraph::draw(Vector2 offset, float scale, const Font& font, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink) {
         _lock.lock();
         _root->draw(Vector2Zero(), offset, scale, font, _physicsEnabled, grabbedNode, hoverNode, hoverEdgeLink);
-        //int c = 0;
-        //int n = _history.size() - (_history.end() - _histIt);
-        //for (auto& a : _history) {
-        //    std::string m = "";
-        //    switch (a.type) {
-        //        case MHGactionType::NODE:
-        //            m += "NODE";
-        //            break;
-        //        case MHGactionType::EDGE:
-        //            m += "EDGE";
-        //            break;
-        //        case MHGactionType::TRANSFER:
-        //            m += "TRANSFER";
-        //            break;
-        //        case MHGactionType::MOVE:
-        //            m += "MOVE";
-        //            break;
-        //        case MHGactionType::SEP:
-        //            m += "SEP";
-        //            break;
-        //        default:
-        //            break;
-        //    }
-        //    DrawText(m.c_str(), 20, c * 32, 32, WHITE);
-        //    if (c == n)
-        //        DrawCircle(0, c * 32, 10, WHITE);
-        //    c++;
-        //}
-        //if (_histIt == _history.end())
-        //    DrawCircle(0, _history.size() * 32, 10, WHITE);
         _lock.unlock();
     }
 
