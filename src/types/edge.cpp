@@ -1,9 +1,31 @@
+#include "edge.h"
+#include "base.h"
 #include "hypergraph.h"
 #include "raylib.h"
+#include "raymath.h"
+#include <cmath>
+#include <cstddef>
 #include <memory>
 #include <string>
 
 namespace mhg {
+
+    bool operator==(const EdgeLinkPtr& lhs, const EdgeLinkPtr& rhs) {
+        return lhs->style->color.r == rhs->style->color.r && 
+               lhs->style->color.g == rhs->style->color.g && 
+               lhs->style->color.b == rhs->style->color.b && 
+               lhs->style->color.a == rhs->style->color.a && 
+               lhs->style->label == rhs->style->label; 
+    }
+    bool operator<(const EdgeLinkPtr& lhs, const EdgeLinkPtr& rhs) {
+        size_t c1 = col2num(lhs->style->color);
+        size_t c2 = col2num(rhs->style->color);
+        return (lhs->style->label == rhs->style->label && c1 < c2) || (lhs->style->label < rhs->style->label);
+    }
+
+    EdgePtr EdgeLink::edge() {
+        return hg->getEdge(eIdx);
+    }
 
     Texture2D Edge::getArrowHead() {
         static Texture2D tex;
@@ -34,11 +56,16 @@ namespace mhg {
         for (auto l : edge->links) {
             auto it = links.find(l);
             if (it == links.end()) {
+                if (inv) {
+                    auto tmp = l->params.backward;
+                    l->params.backward = l->params.foreward;
+                    l->params.foreward = tmp;
+                }
                 links.insert(l);
             } else {
-                it->foreward |= inv ? l.backward : l.foreward;
-                it->backward |= inv ? l.foreward : l.backward;
-                it->weight += l.weight;
+                (*it)->params.foreward |= inv ? l->params.backward : l->params.foreward;
+                (*it)->params.backward |= inv ? l->params.foreward : l->params.backward;
+                (*it)->params.weight += l->params.weight;
             }
         }
     }
@@ -49,9 +76,9 @@ namespace mhg {
         for (auto l : elinks) {
             auto it = links.find(l);
             if (it != links.end()) {
-                if ((inv && l.backward) || (!inv && l.foreward)) it->foreward = false;
-                if ((inv && l.foreward) || (!inv && l.backward)) it->backward = false;
-                if (!it->foreward && !it->backward)
+                if ((inv && l->params.backward) || (!inv && l->params.foreward)) (*it)->params.foreward = false;
+                if ((inv && l->params.foreward) || (!inv && l->params.backward)) (*it)->params.backward = false;
+                if (!(*it)->params.foreward && !(*it)->params.backward)
                     links.erase(l);
             }
         }
@@ -82,12 +109,14 @@ namespace mhg {
         float aFromStep = fromSpread / (links.size() + 1);
         float aToStep = toSpread / (links.size() + 1);
 
-        std::set<EdgeLinkStyle>::iterator hoverLink = links.end();
+        EdgeLinkPtr hoverLink = nullptr;
 
         float a1 = angle - fromSpread * 0.5 + aFromStep;
         float a2 = angle2 + toSpread * 0.5 - aToStep;
 
-        for (auto& l : links) {
+        bool drawArrows = (maxLvlNodeScale > HIDE_ARROW_SCALE);
+
+       for (auto& l : links) {
             if (links.size() > 1) {
                 pt0m = pt0 + from->_rCache * Vector2{ cos(a1), sin(a1) };
                 pt2m = pt2 + to->_rCache * Vector2{ cos(a2), sin(a2) };
@@ -108,28 +137,37 @@ namespace mhg {
             float start = fromSameHG ? t2 : t1;
             float end   = fromSameHG ? t1 : t2;
             float thick = std::clamp(EDGE_THICK * maxLvlNodeScale, 1.0f, EDGE_THICK);
-            bool hover = DrawSplineSegmentBezierQuadraticPart(pt0m, pt1m, pt2m, thick, l.color, start, end, std::max(l.highlight, highlight));
+            bool hover = DrawSplineSegmentBezierQuadraticPart(pt0m, pt1m, pt2m, thick, l->style->color, start, end, std::max(l->highlight, highlight));
             if (hover)
-                hoverLink = links.find(l);
+                hoverLink = l;
 
-            bool drawArrows = (maxLvlNodeScale > HIDE_ARROW_SCALE);
             if (drawArrows) {
                 auto arrow = Edge::getArrowHead();
                 float arscl = std::clamp(EDGE_THICK * maxLvlNodeScale, 1.0f, EDGE_THICK) * ARROW_SZ;
-                if (l.foreward) {
+                if (l->params.foreward) {
                     Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle);
-                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * angle / PI, arscl, ColorBrightness(l.color, std::max(l.highlight, highlight)));
+                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * angle / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
                 }
-                if (l.backward) {
+                if (l->params.backward) {
                     Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle2);
-                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * angle2 / PI, arscl, ColorBrightness(l.color, std::max(l.highlight, highlight)));
+                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * angle2 / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
                 }
             }
-            l.highlight = 0.0f;
+            bool drawLabel = l->editing || l->highlight;
+            if (drawLabel) {
+                float fntsz = FONT_SZ * EDGE_FONT_COEFF;
+                auto sz = MeasureTextEx(font, l->style->label.c_str(), fntsz, 0);
+                if (Vector2LengthSqr(pt0m - pt2m) > Vector2LengthSqr(sz)) {
+                    float angle = atan2(pt2m.y - pt0m.y, pt2m.x - pt0m.x);
+                    if (abs(angle) > PI * 0.5f) angle -= (abs(angle)/angle) * PI;
+                    Vector2 pos = (apos + apos2) * 0.5f;
+                    Vector2 off = -Vector2Rotate(Vector2{sz.x * 0.5f + EDGE_TXT_SPACING * 1.5f, fntsz * EDGE_TXT_OFFSET }, angle);
+                    DrawTextPro(font, l->style->label.c_str(), pos + off, Vector2Zero(), angle * RAD2DEG, fntsz, EDGE_TXT_SPACING, WHITE);
+                }
+            }
+            l->highlight = 0.0f;
         }
         highlight = 0.0f;
-        if (hoverLink != links.end())
-            return std::make_shared<EdgeLinkStyle>(*hoverLink);
-        return nullptr;
+        return hoverLink;
     }
 }

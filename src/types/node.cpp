@@ -1,7 +1,9 @@
 #include "hypergraph.h"
 #include "raylib.h"
+#include "../util/vec_ops.h"
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 namespace mhg {
@@ -65,7 +67,22 @@ namespace mhg {
         bool hover;
         if (hyper) {
             hover = (_rCache * _rCache > Vector2DistanceSqr(GetMousePosition(), posmod));
-            DrawCircleV(posmod, _rCache, ColorBrightness(RED, highlight));
+            Vector3 c;
+            float n = 0;
+            for (auto& e : edgesIn) {
+                for (auto& l : e->links) {
+                    c = c + Vector3{(float)l->style->color.r, (float)l->style->color.g, (float)l->style->color.b};
+                    n++;
+                }
+            }
+            for (auto& e : edgesOut) {
+                for (auto& l : e->links) {
+                    c = c + Vector3{(float)l->style->color.r, (float)l->style->color.g, (float)l->style->color.b};
+                    n++;
+                }
+            }
+            Color avgColor = Color{ uint8_t(c.x / n), uint8_t(c.y / n), uint8_t(c.z / n), 255 };
+            DrawCircleV(posmod, _rCache, ColorBrightness(avgColor, highlight));
         } else {
             float r = NODE_SZ * ls;
             hover = (r * r > Vector2DistanceSqr(GetMousePosition(), posmod));

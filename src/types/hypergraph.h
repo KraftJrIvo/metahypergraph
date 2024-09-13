@@ -4,17 +4,22 @@
 #include <list>
 #include <map>
 
+#include "base.h"
 #include "edge.h"
+#include "metahypergraph.h"
 #include "raylib.h"
 
 namespace mhg {
 
+    class MetaHyperGraph;
     class HyperGraph {
         public:
-            HyperGraph(NodePtr parent = nullptr) : 
-                parent(parent), lvl(parent ? (parent->hg->lvl + 1) : 0)
+            HyperGraph(MetaHyperGraph& pmhg, NodePtr parent = nullptr) : 
+                pmhg(pmhg), parent(parent), lvl(parent ? (parent->hg->lvl + 1) : 0)
             { }
 
+            MetaHyperGraph& pmhg;
+            HyperGraphPtr self = nullptr;
             NodePtr parent = nullptr;
             int lvl = 0;
             float coeff();
@@ -24,19 +29,21 @@ namespace mhg {
             int _nDrawableNodesCache = -1;
             float _scaleCache;
 
+            bool isChildOf(HyperGraphPtr hg);
             void clear();
+            void removeOuterEdges(HyperGraphPtr hg);
 
-            NodePtr addNode(HyperGraphPtr self, const std::string& label, const Color& color, bool via = false, bool hyper = false);
-            void addNode(HyperGraphPtr self, NodePtr node);
-            void removeNode(NodePtr node, bool clear = true);
-            void transferNode(HyperGraphPtr self, NodePtr node, bool moveEdges = true);
-            EdgePtr addEdge(HyperGraphPtr self, EdgeLinkStyle style, NodePtr from, NodePtr to);
-            void addEdge(HyperGraphPtr self, EdgePtr edge);
+            NodePtr addNode(const std::string& label, const Color& color, bool via = false, bool hyper = false);
+            void addNode(NodePtr node);
+            void removeNode(NodePtr node, bool removeOuterEdges = true);
+            void transferNode(NodePtr node, bool moveEdges = true);
+            EdgePtr addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to);
+            void addEdge(EdgePtr edge);
             void removeEdge(EdgePtr edge, bool clear = true);
             void reduceEdge(EdgePtr edge, bool clear = true);
-            void transferEdge(HyperGraphPtr self, EdgePtr edge);
-            NodePtr addHyperEdge(HyperGraphPtr self, const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
-            NodePtr makeEdgeHyper(HyperGraphPtr self, EdgePtr edge);
+            void transferEdge(EdgePtr edge);
+            NodePtr addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
+            NodePtr makeEdgeHyper(EdgePtr edge);
 
             void updateScale(int off);
             void recalcTower(NodePtr in, NodePtr from = nullptr);
@@ -49,12 +56,13 @@ namespace mhg {
             void recenter();
             void move(const Vector2 delta);
 
-            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink);
+            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
 
-            bool hasNodeIdx(size_t idx) {return _nodes.count(idx);}
-            bool hasEdgeIdx(size_t idx) {return _edges.count(idx);}
-        private:
+            NodePtr getNode(size_t idx) {return _nodes.count(idx) ? _nodes.at(idx) : nullptr;}
+            EdgePtr getEdge(size_t idx) {return _edges.count(idx) ? _edges.at(idx) : nullptr;}
+    
+    private:
             std::map<size_t, NodePtr> _nodes;
             std::map<size_t, EdgePtr> _edges;
 

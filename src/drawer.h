@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 
 #include "types/metahypergraph.h"
@@ -17,7 +18,7 @@ namespace mhg {
 
         void stop() { _drawing = false; }
         bool isDrawing() { return _drawing; }
-        bool isEditing() { return (_editingNode != nullptr); }
+        virtual bool isEditing() { return false; }
         bool isChanged() { bool c = _changed; _changed = false; return c; }
         
         virtual void recenter() = 0;
@@ -25,8 +26,9 @@ namespace mhg {
         static std::shared_ptr<Drawer> create(MetaHyperGraph& mhg, Vector2 winSize = { 512, 512 }, std::string winName = "");
 
     protected:
+        static std::vector<Color> COLORS;
+
         MetaHyperGraph& _mhg;
-        NodePtr _editingNode = nullptr;
 
         Vector2 _baseWinSize;
         Vector2 _winSize;

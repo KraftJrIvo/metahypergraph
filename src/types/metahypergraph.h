@@ -2,7 +2,9 @@
 
 #include <mutex>
 #include <deque>
+#include <string>
 
+#include "edge.h"
 #include "hypergraph.h"
 #include "raylib.h"
 
@@ -10,13 +12,17 @@ namespace mhg {
 
     enum class MHGactionType { SEP, NODE, EDGE, MOVE, TRANSFER };  
     struct MHGaction {
-        MHGactionType type;
-        bool inverse;
+        MHGactionType type = MHGactionType::SEP;
+        bool inverse = false;
+        bool change = false;
         HyperGraphPtr hg, from;
         NodePtr n;
         EdgePtr e;
-        EdgeLinkStyle els;
+        EdgeLinkStylePtr els;
+        EdgeLinkParams elp = EdgeLinkParams{};
         Vector2 prv, cur;
+        std::string prvLabel, curLabel;
+        Color prvColor, curColor;
     };
 
     class DrawerImpl;
@@ -30,7 +36,7 @@ namespace mhg {
             void removeNode(NodePtr node);
             void moveNode(NodePtr node, Vector2 prvPos, Vector2 newPos);
             void transferNode(HyperGraphPtr to, NodePtr node);
-            EdgePtr addEdge(EdgeLinkStyle style, NodePtr from, NodePtr to);
+            EdgePtr addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to);
             void removeEdge(EdgePtr edge);
             void reduceEdge(EdgePtr edge);
             NodePtr addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
@@ -42,14 +48,16 @@ namespace mhg {
             void undo();
             void redo();
 
-            void draw(Vector2 offset, float scale, const Font& font, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink);
+            void draw(Vector2 offset, float scale, const Font& font, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
+
+            void noticeAction(const MHGaction& action, bool sep = true);
 
         private:
             HyperGraphPtr _root;
 
-            std::deque<MHGaction> _history = { MHGaction{.type = MHGactionType::SEP} };
-            std::deque<MHGaction>::iterator _histIt = _history.begin();
+            std::deque<MHGaction> _history;
+            std::deque<MHGaction>::iterator _histIt;
             bool _historyRecording = false;
 
             bool _physicsEnabled = false;
@@ -58,7 +66,6 @@ namespace mhg {
 
             void _addNode(NodePtr node);
             void _addEdge(EdgePtr edge);
-            void _noticeAction(const MHGaction& action, bool sep = true);
             void _doAction(const MHGaction& action, bool inverse);
     };
 }

@@ -8,6 +8,7 @@
 #include <set>
 #include <string_view>
 
+#include "base.h"
 #include "node.h"
 #include "raylib.h"
 
@@ -18,29 +19,34 @@ namespace mhg {
     struct EdgeLinkStyle {
         Color color = RED;
         std::string label = "";
-        mutable float weight = 1.0f;
-        mutable bool foreward = true;
-        mutable bool backward = false;
-        mutable float highlight = 0.0f;
+    };
+    typedef std::shared_ptr<EdgeLinkStyle> EdgeLinkStylePtr;
 
-        bool operator==(const EdgeLinkStyle& rhs) const {
-            return color.r == rhs.color.r && color.g == rhs.color.g && color.b == rhs.color.b && color.a == rhs.color.a && label == rhs.label; 
-        }
-        bool operator<(const EdgeLinkStyle& rhs) const {
-            size_t c1 = col2num(color);
-            size_t c2 = col2num(rhs.color);
-            return (label < rhs.label) || (label == rhs.label && c1 < c2);// || (label == rhs.label && c1 == c2 && weight < rhs.weight);
-        }
+    struct EdgeLinkParams {
+        float weight = 1.0f;
+        bool foreward = true;
+        bool backward = false;
     };
 
-    typedef std::list<std::pair<EdgeLinkStyle, NodePtr>> EdgeLinksBundle;
+    struct EdgeLink {
+        HyperGraphPtr hg = nullptr;
+        size_t eIdx = -1;
+        EdgeLinkStylePtr style;
+        mutable EdgeLinkParams params;
+        float highlight = 0.0f;
+        bool editing = false;
+        EdgePtr edge();
+    };
+    typedef std::shared_ptr<EdgeLink> EdgeLinkPtr;
 
-    typedef std::set<EdgeLinkStyle> EdgeLinks;
-    typedef std::shared_ptr<EdgeLinkStyle> EdgeLinkPtr;
-    typedef std::pair<EdgePtr, EdgeLinkStyle> EdgeLinkHover;
-    typedef std::shared_ptr<EdgeLinkHover> EdgeLinkHoverPtr;
+    typedef std::list<std::pair<EdgeLinkStylePtr, NodePtr>> EdgeLinksBundle;
+    typedef std::set<EdgeLinkPtr> EdgeLinks;
+
+    bool operator==(const EdgeLinkPtr& lhs, const EdgeLinkPtr& rhs);
+    bool operator<(const EdgeLinkPtr& lhs, const EdgeLinkPtr& rhs);
 
     struct Edge {
+        HyperGraphPtr hg = nullptr;
         size_t idx;
         EdgeLinks links;
         NodePtr from;
@@ -51,8 +57,8 @@ namespace mhg {
 
         static Texture2D getArrowHead();
 
-        Edge(size_t idx, EdgeLinkStyle style, NodePtr from, NodePtr via, NodePtr to) :
-            idx(idx), links({style}), from(from), via(via), to(to)
+        Edge(HyperGraphPtr hg, size_t idx, EdgeLinkStylePtr style, NodePtr from, NodePtr via, NodePtr to) :
+            hg(hg), idx(idx), links({std::make_shared<EdgeLink>(EdgeLink{.hg = hg, .eIdx = idx, .style = style})}), from(from), via(via), to(to)
         { }
 
         bool similar(EdgePtr edge);

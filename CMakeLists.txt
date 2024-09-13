@@ -47,22 +47,7 @@ if (NOT raylib_FOUND) # If there's none, fetch and build raylib
 endif()
 target_link_libraries(MHG PUBLIC raylib)
 
-add_custom_target(prepare_rel
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/Release
+add_custom_target(copy_assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/res ${CMAKE_CURRENT_BINARY_DIR}/res
 )
-add_dependencies(raylib prepare_rel)
-
-add_custom_target(copy_assets_rel
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/res ${CMAKE_CURRENT_BINARY_DIR}/Release/res
-)
-add_dependencies(raylib copy_assets_rel)
-
-add_custom_target(prepare_deb
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/Debug
-)
-add_dependencies(raylib prepare_deb)
-
-add_custom_target(copy_assets_deb
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/res ${CMAKE_CURRENT_BINARY_DIR}/Debug/res
-)
-add_dependencies(raylib copy_assets_deb)
+add_dependencies(raylib copy_assets)

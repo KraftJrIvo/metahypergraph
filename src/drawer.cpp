@@ -1,9 +1,13 @@
 #include "drawer.h"
 #include "raylib.h"
 #include "raymath.h"
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 
+#include "types/edge.h"
+#include "types/metahypergraph.h"
 #include "util/utf8.cpp"
 
 #include <codecvt>
@@ -12,12 +16,16 @@
 #define INPUT_LINE_H 100
 
 namespace mhg {
+    std::vector<Color> Drawer::COLORS = { LIGHTGRAY, GRAY, DARKGRAY, YELLOW, GOLD, ORANGE, PINK, RED, MAROON, GREEN, LIME, DARKGREEN, SKYBLUE, BLUE, DARKBLUE, PURPLE, VIOLET, DARKPURPLE, BEIGE, BROWN, DARKBROWN };
+
     class DrawerImpl final : public Drawer {
     public:
         DrawerImpl(MetaHyperGraph& mhg, Vector2 winSize, std::string winName);
         ~DrawerImpl() { _redrawer.join(); };
 
-        void recenter();
+        void recenter() override;
+
+        bool isEditing() override {return _editingNode != nullptr || _editingEdgeLink != nullptr;};
     private:
         std::thread _redrawer;
         Vector2 _offset = Vector2Zero();
@@ -29,7 +37,7 @@ namespace mhg {
         const std::string _allChars;
 
         NodePtr _hoverNode = nullptr;
-        EdgeLinkHoverPtr _hoverEdgeLink = nullptr;
+        EdgeLinkPtr _hoverEdgeLink = nullptr;
 
         NodePtr _grabbedNode = nullptr;
         Vector2 _grabbedInitPos = Vector2Zero();
@@ -40,11 +48,19 @@ namespace mhg {
         EdgePtr _addEdgeFromEdge = nullptr;
         EdgePtr _addEdgeToEdge = nullptr;
 
+        EdgeLinkStylePtr _lastLinkStyle = nullptr;
+        
+        NodePtr _editingNode = nullptr;
+        EdgeLinkPtr _editingEdgeLink = nullptr;
+        uint8_t _editingColorIdx = 0;
+
         std::string _labelPriorToEdit;
+        Color _colorPriorToEdit;
 
         void _startEditingNode(NodePtr node);
-        void _editNode();
-        void _stopEditingNode();
+        void _startEditingEdgeLink(EdgeLinkPtr el);
+        void _edit();
+        void _stopEditing();
 
         void _draw();
         void _update();
@@ -85,50 +101,83 @@ namespace mhg {
         _editingNode = node;
         _editingNode->editing = true;
         _labelPriorToEdit = _editingNode->label;
+        _colorPriorToEdit = _editingNode->color;
         _editingNode->label += '_';
     }
 
-    void DrawerImpl::_editNode() {
+    void DrawerImpl::_startEditingEdgeLink(EdgeLinkPtr el) {
+        _editingEdgeLink = el;
+        _editingEdgeLink->editing = true;
+        _labelPriorToEdit = _editingEdgeLink->style->label;
+        _colorPriorToEdit = _editingEdgeLink->style->color;
+        _editingEdgeLink->style->label += '_';
+    }
+
+    void DrawerImpl::_edit() {
+        auto& label = _editingNode ? _editingNode->label : _editingEdgeLink->style->label;
+        auto& color = _editingNode ? _editingNode->color : _editingEdgeLink->style->color;
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ESCAPE)) {
-            if (IsKeyPressed(KEY_ESCAPE))
-                _editingNode->label = _labelPriorToEdit;
-            else
-                _editingNode->label = _editingNode->label.substr(0, _editingNode->label.length() - 1);
-            _stopEditingNode();
+            if (IsKeyPressed(KEY_ESCAPE)) {
+                label = _labelPriorToEdit;
+                color = _colorPriorToEdit;
+            } else
+                label = label.substr(0, label.length() - 1);
+            _stopEditing();
         }
-        if (IsKeyPressed(KEY_BACKSPACE) && _editingNode->label.length()) {
-            _editingNode->label = _editingNode->label.substr(0, _editingNode->label.length() - 1);
-            do { _editingNode->label = _editingNode->label.substr(0, _editingNode->label.length() - 1);
-            } while (!validate_utf8(_editingNode->label.c_str()));
-            _editingNode->label += '_';
+        if (IsKeyPressed(KEY_BACKSPACE) && label.length()) {
+            label = label.substr(0, label.length() - 1);
+            do { label = label.substr(0, label.length() - 1);
+            } while (!validate_utf8(label.c_str()));
+            label += '_';
         }
+        float mwm = GetMouseWheelMove();
+        if (mwm < 0)
+            _editingColorIdx = (_editingColorIdx == 0) ? (COLORS.size() - 1) : _editingColorIdx - 1;
+        if (mwm > 0)
+            _editingColorIdx = (_editingColorIdx == COLORS.size() - 1) ? 0 : _editingColorIdx + 1;
+        if (mwm != 0)
+            color = COLORS[_editingColorIdx];
         wchar_t ch = GetCharPressed();
         if (ch) {
-            _editingNode->label = _editingNode->label.substr(0, _editingNode->label.length() - 1);
+            label = label.substr(0, label.length() - 1);
             std::wstring ws(L"a");
             ws.at(0) = ch;
             using convert_typeX = std::codecvt_utf8<wchar_t>;
             std::wstring_convert<convert_typeX, wchar_t> converterX;
             std::string str = converterX.to_bytes(ws);
             if (ch)
-                _editingNode->label += str;
-            _editingNode->label += '_';
+                label += str;
+            label += '_';
         }
     }
 
-    void DrawerImpl::_stopEditingNode() {
-        _editingNode->editing = false;
-        _editingNode = nullptr;
+    void DrawerImpl::_stopEditing() {
+        _mhg.noticeAction(MHGaction{.type = _editingNode ? MHGactionType::NODE : MHGactionType::EDGE, .change = true, .n = _editingNode, .els = _editingEdgeLink ? _editingEdgeLink->style : nullptr, 
+            .prvLabel = _labelPriorToEdit, .curLabel = _editingNode ? _editingNode->label : _editingEdgeLink->style->label,
+            .prvColor = _colorPriorToEdit, .curColor = _editingNode ? _editingNode->color : _editingEdgeLink->style->color});
+        if (_editingNode) {
+            _editingNode->editing = false;
+            _editingNode = nullptr;
+        } else if (_editingEdgeLink) {
+            _editingEdgeLink->editing = false;
+            _lastLinkStyle = _editingEdgeLink->style;
+            _editingEdgeLink = nullptr;
+        }
+        _editingColorIdx = 0;
     }
 
     void DrawerImpl::_update() {
-        if (_editingNode) {
-            _editNode();
+        if (isEditing()) {
+            _edit();
         } else {
-
-            if (_hoverNode && !_hoverNode->hyper && IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && IsGestureDetected(GESTURE_DOUBLETAP)) {
-                _startEditingNode(_hoverNode);
-                _hoverNode = nullptr;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && IsGestureDetected(GESTURE_DOUBLETAP)) {
+                if (_hoverNode && !_hoverNode->hyper) {
+                    _startEditingNode(_hoverNode);
+                    _hoverNode = nullptr;
+                } else if (_hoverEdgeLink) {
+                    _startEditingEdgeLink(_hoverEdgeLink);
+                    _hoverEdgeLink = nullptr;
+                }
             }
 
             auto mpos = GetMousePosition();
@@ -142,8 +191,10 @@ namespace mhg {
                         auto dropNode = _mhg.getNodeAt(_grabbedNode->_posCache, {_grabbedNode});
                         auto dropHG = dropNode ? dropNode->content : _mhg._root;
                         if (dropHG != _grabbedNode->hg) {
-                            if (!dropHG)
-                                dropHG = dropNode->content = std::make_shared<HyperGraph>(dropNode);
+                            if (!dropHG) {
+                                dropHG = dropNode->content = std::make_shared<HyperGraph>(_mhg, dropNode);
+                                dropHG->self = dropHG;
+                            }
                             _mhg.transferNode(dropHG, _grabbedNode);
                             auto o = (dropHG == _mhg._root) ? _offset : dropNode->_posCache;
                             _grabbedNode->pos = (_grabbedNode->_posCache - o) / (dropHG->scale() * _scale);
@@ -199,7 +250,9 @@ namespace mhg {
                     _startEditingNode(node);
             } else if (IsKeyPressed(KEY_DELETE)) {
                 if (_hoverEdgeLink) {
-                    auto e = std::make_shared<Edge>(_hoverEdgeLink->first->idx, _hoverEdgeLink->second, _hoverEdgeLink->first->from, _hoverEdgeLink->first->via, _hoverEdgeLink->first->to);
+                    auto edge = _hoverEdgeLink->edge();
+                    auto e = std::make_shared<Edge>(nullptr, edge->idx, _hoverEdgeLink->style, edge->from, edge->via, edge->to);
+                    (*e->links.begin())->params = _hoverEdgeLink->params;
                     _mhg.reduceEdge(e);
                     _hoverEdgeLink = nullptr;
                 } else if (_hoverNode) {
@@ -210,14 +263,14 @@ namespace mhg {
 
             if (IsKeyPressed(KEY_E)) {
                 if (_hoverEdgeLink) {
-                    _addEdgeFromEdge = _hoverEdgeLink->first;
+                    _addEdgeFromEdge = _hoverEdgeLink->edge();
                 } else if (_hoverNode) {
                     _addEdgeFromNode = _hoverNode;
                 }
             }
             if (IsKeyDown(KEY_E) && (_addEdgeFromNode || _addEdgeFromEdge)) {
-                if (_hoverEdgeLink && _hoverEdgeLink->first != _addEdgeFromEdge) {
-                    _addEdgeToEdge = _hoverEdgeLink->first;
+                if (_hoverEdgeLink && _hoverEdgeLink->edge() != _addEdgeFromEdge) {
+                    _addEdgeToEdge = _hoverEdgeLink->edge();
                     _addEdgeToNode = nullptr;
                 } else if (_hoverNode && _hoverNode != _addEdgeFromNode) {
                     _addEdgeToNode = _hoverNode;
@@ -234,7 +287,9 @@ namespace mhg {
                     if (_mhg._historyRecording && !_addEdgeFromNode) _mhg._histIt-=2;
                     auto to = _addEdgeToNode ? _addEdgeToNode : _mhg.makeEdgeHyper(_addEdgeToEdge);
                     if (_mhg._historyRecording && !_addEdgeToNode) _mhg._histIt-=2;
-                    _mhg.addEdge(EdgeLinkStyle{}, from, to);
+                    auto style = (!IsKeyDown(KEY_LEFT_SHIFT) && _lastLinkStyle) ? _lastLinkStyle : std::make_shared<EdgeLinkStyle>();
+                    _mhg.addEdge(style, from, to);
+                    _lastLinkStyle = style;
                 }
                 _addEdgeFromNode = nullptr;
                 _addEdgeFromEdge = nullptr;
@@ -243,7 +298,7 @@ namespace mhg {
             }
             if (IsKeyPressed(KEY_H))
                 if (_hoverEdgeLink)
-                    _mhg.makeEdgeHyper(_hoverEdgeLink->first);
+                    _mhg.makeEdgeHyper(_hoverEdgeLink->edge());
             
             // HISTORY
             if (IsKeyDown(KEY_LEFT_CONTROL)) {
@@ -266,7 +321,7 @@ namespace mhg {
             auto to = GetMousePosition();
             DrawLineEx(from, to, EDGE_THICK, WHITE);
         }
-        if (_hoverEdgeLink) _hoverEdgeLink->first->links.find(_hoverEdgeLink->second)->highlight = HIGHLIGHT_INTENSITY;
+        if (_hoverEdgeLink) _hoverEdgeLink->highlight = HIGHLIGHT_INTENSITY;
         if (_hoverNode) _hoverNode->highlight = HIGHLIGHT_INTENSITY;
         if (_addEdgeFromNode) _addEdgeFromNode->highlight = HIGHLIGHT_INTENSITY_2;
         if (_addEdgeFromEdge) _addEdgeFromEdge->highlight = HIGHLIGHT_INTENSITY_2;

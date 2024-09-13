@@ -1,4 +1,5 @@
 #include "hypergraph.h"
+#include "base.h"
 #include "raylib.h"
 #include <cstddef>
 #include <iterator>
@@ -6,12 +7,40 @@
 
 namespace mhg {
 
+    bool HyperGraph::isChildOf(HyperGraphPtr hg) {
+        if (hg.get() == this)
+            return true;
+        if (!parent)
+            return false;
+        return parent->hg->isChildOf(hg);
+    }
+
     void HyperGraph::clear() {
         auto nodes = _nodes;
         for (auto& n : nodes)
             removeNode(n.second);
         _nodes.clear();
         _edges.clear();
+    }
+
+    void HyperGraph::removeOuterEdges(HyperGraphPtr hg) {
+        for (auto& n : _nodes) {
+            if (n.second->content)
+                n.second->content->removeOuterEdges(hg);
+            auto edgesIn = n.second->edgesIn;
+            for (auto& e : edgesIn)
+                if (!e->from->hg->isChildOf(hg) || !e->to->hg->isChildOf(hg)) {
+                    e->via->hg->removeEdge(e);
+                    pmhg.noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e, .els = (*e->links.begin())->style, .elp = (*e->links.begin())->params}, false);            
+                }
+            auto edgesOut = n.second->edgesOut;
+            for (auto& e : edgesOut) {
+                if (!e->from->hg->isChildOf(hg) || !e->to->hg->isChildOf(hg)) {
+                    e->via->hg->removeEdge(e);
+                    pmhg.noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e, .els = (*e->links.begin())->style, .elp = (*e->links.begin())->params}, false);            
+                }
+            }
+        }
     }
 
     float HyperGraph::coeff() {
@@ -32,33 +61,33 @@ namespace mhg {
         return parent->hg->scale() * _scaleCache;
     }
 
-    NodePtr HyperGraph::addNode(HyperGraphPtr self, const std::string &label, const Color &color, bool via, bool hyper) {
+    NodePtr HyperGraph::addNode(const std::string &label, const Color &color, bool via, bool hyper) {
         auto node = std::make_shared<Node>(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, label, color, via, hyper);
-        addNode(self, node);
+        addNode(node);
         return node;
     }
 
-    void HyperGraph::addNode(HyperGraphPtr self, NodePtr node) {
+    void HyperGraph::addNode(NodePtr node) {
         if (!node->via && !node->hyper)
             updateScale(1);
         _nodes[node->idx] = node;
     }
     
-    void HyperGraph::transferNode(HyperGraphPtr self, NodePtr node, bool moveEdges) {
+    void HyperGraph::transferNode(NodePtr node, bool moveEdges) {
         if (moveEdges) {
             auto edgesIn = node->edgesIn;
             for (auto& e : edgesIn) {
                 auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
                 auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
                 if (e->via->hg != maxLvlHg)
-                    maxLvlHg->transferEdge(maxLvlHg, e);
+                    maxLvlHg->transferEdge(e);
             }        
             auto edgesOut = node->edgesOut;
             for (auto& e : edgesOut) {
                 auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
                 auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
                 if (e->via->hg != maxLvlHg)
-                    maxLvlHg->transferEdge(maxLvlHg, e);
+                    maxLvlHg->transferEdge(e);
             }
         }
         node->hg->removeNode(node, false);        
@@ -72,10 +101,10 @@ namespace mhg {
             node->content->lvl = lvl + 1;
     }
 
-    void HyperGraph::removeNode(NodePtr node, bool clear) {
-        if (clear) {
+    void HyperGraph::removeNode(NodePtr node, bool rmOuterEdges) {
+        if (rmOuterEdges) {
             if (node->content)
-                node->content->clear();
+                node->content->removeOuterEdges(node->content);            
             auto edgesIn = node->edgesIn;
             for (auto& e : edgesIn) {
                 e->via->hg->removeEdge(e);
@@ -98,21 +127,21 @@ namespace mhg {
             n.second->pos = n.second->pos * preCoeff / aftCoeff;
     }
 
-    EdgePtr HyperGraph::addEdge(HyperGraphPtr self, EdgeLinkStyle style, NodePtr from, NodePtr to) {
+    EdgePtr HyperGraph::addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to) {
         auto sim = from->edgeTo(to);
         if (sim) {
-            auto edge = std::make_shared<Edge>(-1, style, from, nullptr, to);
+            auto edge = std::make_shared<Edge>(self, sim->idx, style, from, nullptr, to);
             sim->fuse(edge);
             return sim;
         }
         auto via = std::make_shared<Node>(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, "", BLANK, true, false);
-        auto edge = std::make_shared<Edge>(_edges.size() ? (_edges.rbegin()->first + 1) : 0, style, from, via, to);
-        addEdge(self, edge);
+        auto edge = std::make_shared<Edge>(self, _edges.size() ? (_edges.rbegin()->first + 1) : 0, style, from, via, to);
+        addEdge(edge);
         return edge;
     }
 
-    void HyperGraph::addEdge(HyperGraphPtr self, EdgePtr edge) {
-        addNode(self, edge->via);
+    void HyperGraph::addEdge(EdgePtr edge) {
+        addNode(edge->via);
         _edges[edge->idx] = edge;
         edge->from->edgesOut.insert(edge);
         edge->to->edgesIn.insert(edge);
@@ -134,32 +163,32 @@ namespace mhg {
             removeEdge(e, clear);
     }
             
-    void HyperGraph::transferEdge(HyperGraphPtr self, EdgePtr edge) {
+    void HyperGraph::transferEdge(EdgePtr edge) {
         edge->via->hg->removeEdge(edge, false);
         size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
         edge->idx = idx;
         _edges[idx] = edge;
-        self->transferNode(self, edge->via, false);
+        self->transferNode(edge->via, false);
     }
 
-    NodePtr HyperGraph::addHyperEdge(HyperGraphPtr self, const EdgeLinksBundle& froms, const EdgeLinksBundle& tos) {
-        auto hyperVia = addNode(self, "", BLANK, false, true);
+    NodePtr HyperGraph::addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos) {
+        auto hyperVia = addNode("", BLANK, false, true);
         for (auto& from : froms)
-            addEdge(self, from.first, from.second, hyperVia);
+            addEdge(from.first, from.second, hyperVia);
         for (auto& to : tos)
-            addEdge(self, to.first, hyperVia, to.second);
+            addEdge(to.first, hyperVia, to.second);
         return hyperVia;
     }
 
-    NodePtr HyperGraph::makeEdgeHyper(HyperGraphPtr self, EdgePtr edge) {
+    NodePtr HyperGraph::makeEdgeHyper(EdgePtr edge) {
         removeEdge(edge);
         EdgeLinksBundle froms;
         for (auto l : edge->links)
-            froms.push_back({l, edge->from});
+            froms.push_back({l->style, edge->from});
         EdgeLinksBundle tos;
         for (auto l : edge->links)
-            tos.push_back({l, edge->to});
-        auto node = addHyperEdge(self, froms, tos);
+            tos.push_back({l->style, edge->to});
+        auto node = addHyperEdge(froms, tos);
         node->pos = (edge->from->pos + edge->to->pos) * 0.5f;
         (*node->edgesIn.begin())->reposition();
         (*node->edgesOut.begin())->reposition();
@@ -207,7 +236,7 @@ namespace mhg {
             n.second->pos += delta;
     }
 
-    void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkHoverPtr& hoverEdgeLink) {
+    void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink) {
         origin += (parent ? (parent->hg->scale() * parent->pos) : Vector2Zero());
         Vector2 scaledOrigin = origin * s;
         for (auto& n : _nodes)
@@ -216,7 +245,7 @@ namespace mhg {
         for (auto& e : _edges) {
             auto hoverLink = e.second->draw(scaledOrigin, offset, s, font, physics);
             if (hoverLink)
-                hoverEdgeLink = std::make_shared<EdgeLinkHover>(e.second, *hoverLink);
+                hoverEdgeLink = hoverLink;
         }
         for (auto& n : _nodes) {
             if (!n.second->via) {
