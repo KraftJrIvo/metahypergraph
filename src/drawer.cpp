@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 
+#include "types/base.h"
 #include "types/edge.h"
 #include "types/metahypergraph.h"
 #include "util/utf8.cpp"
@@ -47,6 +48,7 @@ namespace mhg {
         NodePtr _addEdgeToNode = nullptr;
         EdgePtr _addEdgeFromEdge = nullptr;
         EdgePtr _addEdgeToEdge = nullptr;
+        Vector2 _addEdgeFromMpos = Vector2Zero();
 
         EdgeLinkStylePtr _lastLinkStyle = nullptr;
         
@@ -56,6 +58,9 @@ namespace mhg {
 
         std::string _labelPriorToEdit;
         Color _colorPriorToEdit;
+
+        NodePtr _makeHyperAndMoveToMpos(EdgePtr edge, Vector2 pos);
+        void _dropNode(NodePtr node, Vector2 pos);
 
         void _startEditingNode(NodePtr node);
         void _startEditingEdgeLink(EdgeLinkPtr el);
@@ -164,6 +169,30 @@ namespace mhg {
             _editingEdgeLink = nullptr;
         }
         _editingColorIdx = 0;
+        _grabbedNode = nullptr;
+    }
+
+    NodePtr DrawerImpl::_makeHyperAndMoveToMpos(EdgePtr edge, Vector2 pos) {
+        auto hyperNode = _mhg.makeEdgeHyper(edge);
+        if (_mhg._historyRecording) _mhg._histIt-=2;                    
+        auto o = hyperNode->hg->parent ? hyperNode->hg->parent->_posCache : _offset;
+        _mhg.moveNode(hyperNode, Vector2Zero(), (pos - o) / (hyperNode->hg->scale() * _scale));
+        _dropNode(hyperNode, pos);
+        return hyperNode;
+    }
+
+    void DrawerImpl::_dropNode(NodePtr node, Vector2 pos) {
+        auto dropNode = _mhg.getNodeAt(pos, {node});
+        auto dropHG = dropNode ? dropNode->content : _mhg._root;
+        if (dropHG != node->hg) {
+            if (!dropHG) {
+                dropHG = dropNode->content = std::make_shared<HyperGraph>(_mhg, dropNode);
+                dropHG->self = dropHG;
+            }
+            _mhg.transferNode(dropHG, node);
+            auto o = (dropHG == _mhg._root) ? _offset : dropNode->_posCache;
+            node->pos = (pos - o) / (dropHG->scale() * _scale);
+        }
     }
 
     void DrawerImpl::_update() {
@@ -171,12 +200,12 @@ namespace mhg {
             _edit();
         } else {
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && IsGestureDetected(GESTURE_DOUBLETAP)) {
-                if (_hoverNode && !_hoverNode->hyper) {
-                    _startEditingNode(_hoverNode);
-                    _hoverNode = nullptr;
-                } else if (_hoverEdgeLink) {
+                if (_hoverEdgeLink) {
                     _startEditingEdgeLink(_hoverEdgeLink);
                     _hoverEdgeLink = nullptr;
+                } else if (_hoverNode && !_hoverNode->hyper) {
+                    _startEditingNode(_hoverNode);
+                    _hoverNode = nullptr;
                 }
             }
 
@@ -187,19 +216,8 @@ namespace mhg {
                 _grabOff = (_scale * _hoverNode->hg->scale() * _hoverNode->pos + _offset) - mpos;
             } else if (_grabbedNode) {
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                    if (!_grabbedNode->via && !_grabbedNode->hyper) {
-                        auto dropNode = _mhg.getNodeAt(_grabbedNode->_posCache, {_grabbedNode});
-                        auto dropHG = dropNode ? dropNode->content : _mhg._root;
-                        if (dropHG != _grabbedNode->hg) {
-                            if (!dropHG) {
-                                dropHG = dropNode->content = std::make_shared<HyperGraph>(_mhg, dropNode);
-                                dropHG->self = dropHG;
-                            }
-                            _mhg.transferNode(dropHG, _grabbedNode);
-                            auto o = (dropHG == _mhg._root) ? _offset : dropNode->_posCache;
-                            _grabbedNode->pos = (_grabbedNode->_posCache - o) / (dropHG->scale() * _scale);
-                        }
-                    }
+                    if (!_grabbedNode->via)
+                        _dropNode(_grabbedNode, mpos);
                     _mhg.moveNode(_grabbedNode, _grabbedInitPos, _grabbedNode->pos);
                     _grabbedNode = nullptr;
                 } else {
@@ -246,8 +264,6 @@ namespace mhg {
                 auto hg = _hoverNode ? _hoverNode->content : _mhg._root;
                 auto o = _hoverNode ? _hoverNode->_posCache : _offset;
                 _mhg.moveNode(node, Vector2Zero(), (mpos - o) / (hg->scale() * _scale));
-                if (!node->hyper)
-                    _startEditingNode(node);
             } else if (IsKeyPressed(KEY_DELETE)) {
                 if (_hoverEdgeLink) {
                     auto edge = _hoverEdgeLink->edge();
@@ -264,6 +280,7 @@ namespace mhg {
             if (IsKeyPressed(KEY_E)) {
                 if (_hoverEdgeLink) {
                     _addEdgeFromEdge = _hoverEdgeLink->edge();
+                    _addEdgeFromMpos = mpos;
                 } else if (_hoverNode) {
                     _addEdgeFromNode = _hoverNode;
                 }
@@ -283,9 +300,9 @@ namespace mhg {
             }
             if (IsKeyReleased(KEY_E)) {
                 if ((_addEdgeFromNode || _addEdgeFromEdge) && (_addEdgeToNode || _addEdgeToEdge)) {
-                    auto from = _addEdgeFromNode ? _addEdgeFromNode : _mhg.makeEdgeHyper(_addEdgeFromEdge);
+                    auto from = _addEdgeFromNode ? _addEdgeFromNode : _makeHyperAndMoveToMpos(_addEdgeFromEdge, _addEdgeFromMpos);
                     if (_mhg._historyRecording && !_addEdgeFromNode) _mhg._histIt-=2;
-                    auto to = _addEdgeToNode ? _addEdgeToNode : _mhg.makeEdgeHyper(_addEdgeToEdge);
+                    auto to = _addEdgeToNode ? _addEdgeToNode : _makeHyperAndMoveToMpos(_addEdgeToEdge, mpos);
                     if (_mhg._historyRecording && !_addEdgeToNode) _mhg._histIt-=2;
                     auto style = (!IsKeyDown(KEY_LEFT_SHIFT) && _lastLinkStyle) ? _lastLinkStyle : std::make_shared<EdgeLinkStyle>();
                     _mhg.addEdge(style, from, to);
@@ -296,9 +313,12 @@ namespace mhg {
                 _addEdgeToNode = nullptr;
                 _addEdgeToEdge = nullptr;
             }
-            if (IsKeyPressed(KEY_H))
+            if (IsKeyPressed(KEY_H)) {
                 if (_hoverEdgeLink)
-                    _mhg.makeEdgeHyper(_hoverEdgeLink->edge());
+                    _makeHyperAndMoveToMpos(_hoverEdgeLink->edge(), mpos);
+                else if (_hoverNode)
+                    _hoverNode->hyper = !_hoverNode->hyper;
+            }
             
             // HISTORY
             if (IsKeyDown(KEY_LEFT_CONTROL)) {
@@ -317,7 +337,7 @@ namespace mhg {
         _hoverEdgeLink = nullptr;
         _mhg.draw(_offset + _curOffset, _scale, _font, _grabbedNode, _hoverNode, _hoverEdgeLink);
         if (_addEdgeFromNode || _addEdgeFromEdge) {
-            auto from = _addEdgeFromNode ? _addEdgeFromNode->_posCache : (_addEdgeFromEdge->from->_posCache + _addEdgeFromEdge->to->_posCache) * 0.5f;
+            auto from = _addEdgeFromNode ? _addEdgeFromNode->_posCache : _addEdgeFromMpos;
             auto to = GetMousePosition();
             DrawLineEx(from, to, EDGE_THICK, WHITE);
         }

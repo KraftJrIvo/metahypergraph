@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 
 #include "types/metahypergraph.h"
 #include <memory>

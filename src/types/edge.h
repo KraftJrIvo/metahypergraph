@@ -65,6 +65,8 @@ namespace mhg {
         void fuse(EdgePtr edge);
         void reduce(EdgePtr edge);
 
+        void reindex(HyperGraphPtr hg, size_t idx);
+
         void findArrowPositionBezier(Vector2 p0, Vector2 c1, Vector2 p2, bool atStart, float scale, Vector2& at, float& angle, float& t);
         bool DrawSplineSegmentBezierQuadraticPart(Vector2 p0, Vector2 c1, Vector2 p2, float thick, Color color, float start, float end, float highlight);
         Vector2 getPoint(Vector2 p0, Vector2 c1, Vector2 p2, float t);

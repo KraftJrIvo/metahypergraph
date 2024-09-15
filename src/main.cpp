@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
 
 	mhg.init();
 
-    auto drawer = mhg::Drawer::create(mhg, {W_W, W_H}, "HYPER META GRAPH");
+    auto drawer = mhg::Drawer::create(mhg, {W_W, W_H}, "META HYPER GRAPH");
 
 	while (drawer->isDrawing()) {
 		//mhg.doPhysics();

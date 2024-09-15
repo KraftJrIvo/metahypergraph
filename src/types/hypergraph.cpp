@@ -43,6 +43,26 @@ namespace mhg {
         }
     }
 
+    void HyperGraph::checkForTransferEdges(NodePtr node) {
+        auto edgesIn = node->edgesIn;
+        for (auto& e : edgesIn) {
+            auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
+            auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
+            if (e->via->hg != maxLvlHg)
+                maxLvlHg->transferEdge(e);
+        }        
+        auto edgesOut = node->edgesOut;
+        for (auto& e : edgesOut) {
+            auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
+            auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
+            if (e->via->hg != maxLvlHg)
+                maxLvlHg->transferEdge(e);
+        }
+        if (node->content)
+            for (auto& n : node->content->_nodes)
+                node->content->checkForTransferEdges(n.second);
+    }
+
     float HyperGraph::coeff() {
         return 1.0f / (nDrawableNodes + 1);
     }
@@ -74,22 +94,6 @@ namespace mhg {
     }
     
     void HyperGraph::transferNode(NodePtr node, bool moveEdges) {
-        if (moveEdges) {
-            auto edgesIn = node->edgesIn;
-            for (auto& e : edgesIn) {
-                auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
-                auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
-                if (e->via->hg != maxLvlHg)
-                    maxLvlHg->transferEdge(e);
-            }        
-            auto edgesOut = node->edgesOut;
-            for (auto& e : edgesOut) {
-                auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
-                auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
-                if (e->via->hg != maxLvlHg)
-                    maxLvlHg->transferEdge(e);
-            }
-        }
         node->hg->removeNode(node, false);        
         node->hg = self;
         if (!node->via && !node->hyper)
@@ -99,6 +103,8 @@ namespace mhg {
         _nodes[idx] = node;
         if (node->content)
             node->content->lvl = lvl + 1;
+        if (moveEdges)
+            checkForTransferEdges(node);
     }
 
     void HyperGraph::removeNode(NodePtr node, bool rmOuterEdges) {
@@ -166,8 +172,8 @@ namespace mhg {
     void HyperGraph::transferEdge(EdgePtr edge) {
         edge->via->hg->removeEdge(edge, false);
         size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
-        edge->idx = idx;
         _edges[idx] = edge;
+        edge->reindex(self, idx);
         self->transferNode(edge->via, false);
     }
 

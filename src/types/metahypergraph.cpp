@@ -165,7 +165,8 @@ namespace mhg {
     }
 
     NodePtr MetaHyperGraph::makeEdgeHyper(EdgePtr edge) {
-        noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = (*edge->links.begin())->style, .elp = (*edge->links.begin())->params}, false);
+        for (auto& l : edge->links)
+            noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = edge, .els = l->style, .elp = l->params}, false);
         auto hyperNode = edge->via->hg->makeEdgeHyper(edge);
         if (_historyRecording) {
             noticeAction(MHGaction{.type = MHGactionType::NODE, .inverse = false, .n = hyperNode, .cur = hyperNode->pos}, false);

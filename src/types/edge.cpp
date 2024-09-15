@@ -84,6 +84,15 @@ namespace mhg {
         }
     }
 
+    void Edge::reindex(HyperGraphPtr hg, size_t idx_) {
+        hg = hg;
+        idx = idx_;
+        for (auto& l : links) {
+            l->hg = hg;
+            l->eIdx = idx_;
+        }
+    }
+
     EdgeLinkPtr Edge::draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics) {
         float ls = via->hg->scale() * scale;
         float minLvlNodeScale = scale * ((from->hg->scale() > to->hg->scale()) ? from->hg->scale() : to->hg->scale());
@@ -143,14 +152,18 @@ namespace mhg {
 
             if (drawArrows) {
                 auto arrow = Edge::getArrowHead();
-                float arscl = std::clamp(EDGE_THICK * maxLvlNodeScale, 1.0f, EDGE_THICK) * ARROW_SZ;
+                float arscl = std::clamp(EDGE_THICK * maxLvlNodeScale, 1.0f, EDGE_THICK) / EDGE_THICK * ARROW_SZ;
                 if (l->params.foreward) {
-                    Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle);
-                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * angle / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
+                    auto pt = getPoint(pt0m, pt1m, pt2m, 0.0 - 0.01);
+                    float ang = atan2(apos2.y - pt.y, apos2.x - pt.x);
+                    Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, ang);
+                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * ang / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
                 }
                 if (l->params.backward) {
-                    Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, angle2);
-                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * angle2 / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
+                    auto pt = getPoint(pt0m, pt1m, pt2m, 1.0 + 0.01);
+                    float ang = atan2(apos2.y - pt.y, apos2.x - pt.x);
+                    Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, ang);
+                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * ang / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
                 }
             }
             bool drawLabel = l->editing || l->highlight;

@@ -32,6 +32,7 @@ namespace mhg {
             bool isChildOf(HyperGraphPtr hg);
             void clear();
             void removeOuterEdges(HyperGraphPtr hg);
+            void checkForTransferEdges(NodePtr node);
 
             NodePtr addNode(const std::string& label, const Color& color, bool via = false, bool hyper = false);
             void addNode(NodePtr node);
