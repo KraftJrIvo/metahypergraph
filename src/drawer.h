@@ -1,7 +1,5 @@
 #pragma once
 
-#define SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
-
 #include <vector>
 
 #include "types/metahypergraph.h"
