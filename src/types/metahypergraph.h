@@ -4,6 +4,7 @@
 #include <deque>
 #include <string>
 
+#include "base.h"
 #include "edge.h"
 #include "hypergraph.h"
 #include "raylib.h"
@@ -48,7 +49,7 @@ namespace mhg {
             void undo();
             void redo();
 
-            void draw(Vector2 offset, float scale, const Font& font, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
+            void draw(Vector2 offset, float scale, const Font& font, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
 
             void noticeAction(const MHGaction& action, bool sep = true);

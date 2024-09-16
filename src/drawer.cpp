@@ -56,6 +56,8 @@ namespace mhg {
         EdgeLinkPtr _editingEdgeLink = nullptr;
         uint8_t _editingColorIdx = 0;
 
+        std::map<NodePtr, std::pair<Vector2, Vector2>> _selectedNodes;
+
         std::string _labelPriorToEdit;
         Color _colorPriorToEdit;
 
@@ -210,19 +212,53 @@ namespace mhg {
             }
 
             auto mpos = GetMousePosition();
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && _hoverNode) {
-                _grabbedNode = _hoverNode;
-                _grabbedInitPos = _hoverNode->pos;
-                _grabOff = (_scale * _hoverNode->hg->scale() * _hoverNode->pos + _offset) - mpos;
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                if (_hoverNode) {
+                    _grabbedNode = _hoverNode;
+                    _grabbedInitPos = _hoverNode->pos;
+                    _grabOff = (_scale * _hoverNode->hg->scale() * _hoverNode->pos + _offset) - mpos;
+                    if (!IsKeyDown(KEY_LEFT_CONTROL) && !_selectedNodes.count(_hoverNode))
+                        _selectedNodes.clear();                
+                    for (auto& n : _selectedNodes) {
+                        auto pos = (_scale * n.first->hg->scale() * n.first->pos + _offset);
+                        n.second = {n.first->pos, pos - mpos};
+                    }
+                    if (_selectedNodes.count(_grabbedNode)) {
+                        if (IsKeyDown(KEY_LEFT_CONTROL))
+                            _selectedNodes.erase(_grabbedNode);
+                            
+                    } else {
+                        {
+                            auto selectedNodes = _selectedNodes;
+                            for (auto& sn : selectedNodes)
+                                if (sn.first->content && _grabbedNode->hg->isChildOf(sn.first->content)) 
+                                    _selectedNodes.erase(sn.first);
+                        }
+                        auto pos = (_scale * _grabbedNode->hg->scale() * _grabbedNode->pos + _offset);
+                        _selectedNodes[_grabbedNode] = {_grabbedInitPos, pos - mpos};
+                        if (_grabbedNode->content) {
+                            auto selectedNodes = _selectedNodes;
+                            for (auto& sn : selectedNodes)
+                                if (sn.first->hg->isChildOf(_grabbedNode->content)) 
+                                    _selectedNodes.erase(sn.first);
+                        }
+                    }
+                } else {
+                    _selectedNodes.clear();
+                }
             } else if (_grabbedNode) {
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                    if (!_grabbedNode->via)
-                        _dropNode(_grabbedNode, mpos);
-                    _mhg.moveNode(_grabbedNode, _grabbedInitPos, _grabbedNode->pos);
+                    for (auto& n : _selectedNodes) {
+                        if (!n.first->via)
+                            _dropNode(n.first, n.first->_posCache);
+                        _mhg.moveNode(n.first, n.second.first, n.first->pos);
+                    }
                     _grabbedNode = nullptr;
                 } else {
-                    float ls = _grabbedNode->hg->scale() * _scale;
-                    _grabbedNode->pos = ((mpos - _offset + _curOffset) + _grabOff) / ls;
+                    for (auto& n : _selectedNodes) {
+                        float ls = n.first->hg->scale() * _scale;
+                        n.first->pos = ((mpos - _offset + _curOffset) + n.second.second) / ls;
+                    }
                 }
             }
             
@@ -265,15 +301,23 @@ namespace mhg {
                 auto o = _hoverNode ? _hoverNode->_posCache : _offset;
                 _mhg.moveNode(node, Vector2Zero(), (mpos - o) / (hg->scale() * _scale));
             } else if (IsKeyPressed(KEY_DELETE)) {
-                if (_hoverEdgeLink) {
-                    auto edge = _hoverEdgeLink->edge();
-                    auto e = std::make_shared<Edge>(nullptr, edge->idx, _hoverEdgeLink->style, edge->from, edge->via, edge->to);
-                    (*e->links.begin())->params = _hoverEdgeLink->params;
-                    _mhg.reduceEdge(e);
-                    _hoverEdgeLink = nullptr;
-                } else if (_hoverNode) {
-                    _mhg.removeNode(_hoverNode);
-                    _hoverNode = nullptr;
+                if (_selectedNodes.size()) {
+                    for (auto& sn : _selectedNodes) {                   
+                        _mhg.removeNode(sn.first);
+                        if (_mhg._historyRecording) _mhg._histIt-=2;
+                    }
+                    _selectedNodes.clear();
+                } else {
+                    if (_hoverEdgeLink) {
+                        auto edge = _hoverEdgeLink->edge();
+                        auto e = std::make_shared<Edge>(nullptr, edge->idx, _hoverEdgeLink->style, edge->from, edge->via, edge->to);
+                        (*e->links.begin())->params = _hoverEdgeLink->params;
+                        _mhg.reduceEdge(e);
+                        _hoverEdgeLink = nullptr;
+                    } else if (_hoverNode) {
+                        _mhg.removeNode(_hoverNode);
+                        _hoverNode = nullptr;
+                    }
                 }
             }
 
@@ -335,7 +379,7 @@ namespace mhg {
         ClearBackground(BLACK);
         _hoverNode = nullptr;
         _hoverEdgeLink = nullptr;
-        _mhg.draw(_offset + _curOffset, _scale, _font, _grabbedNode, _hoverNode, _hoverEdgeLink);
+        _mhg.draw(_offset + _curOffset, _scale, _font, _selectedNodes, _hoverNode, _hoverEdgeLink);
         if (_addEdgeFromNode || _addEdgeFromEdge) {
             auto from = _addEdgeFromNode ? _addEdgeFromNode->_posCache : _addEdgeFromMpos;
             auto to = GetMousePosition();
@@ -347,6 +391,8 @@ namespace mhg {
         if (_addEdgeFromEdge) _addEdgeFromEdge->highlight = HIGHLIGHT_INTENSITY_2;
         if (_addEdgeToNode) _addEdgeToNode->highlight = HIGHLIGHT_INTENSITY_2;
         if (_addEdgeToEdge) _addEdgeToEdge->highlight = HIGHLIGHT_INTENSITY_2;
+        for (auto& n : _selectedNodes)
+            n.first->highlight = HIGHLIGHT_INTENSITY_2;
         EndDrawing();
     }
 

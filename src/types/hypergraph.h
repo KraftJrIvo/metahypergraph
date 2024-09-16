@@ -57,7 +57,7 @@ namespace mhg {
             void recenter();
             void move(const Vector2 delta);
 
-            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
+            void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
 
             NodePtr getNode(size_t idx) {return _nodes.count(idx) ? _nodes.at(idx) : nullptr;}

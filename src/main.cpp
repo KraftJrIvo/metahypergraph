@@ -3,8 +3,8 @@
 
 #include <thread>
 
-#define W_W 1024
-#define W_H 1024
+#define W_W 512
+#define W_H 512
 
 int main(int argc, char *argv[]) {
 	

@@ -242,7 +242,9 @@ namespace mhg {
             n.second->pos += delta;
     }
 
-    void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, NodePtr grabbedNode, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink) {
+    void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, 
+        NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink) 
+    {
         origin += (parent ? (parent->hg->scale() * parent->pos) : Vector2Zero());
         Vector2 scaledOrigin = origin * s;
         for (auto& n : _nodes)
@@ -261,14 +263,15 @@ namespace mhg {
         }
         for (auto& n : _nodes)
             if (n.second->content && s * scale() > HIDE_CONTENT_SCALE)
-                n.second->content->draw(origin, offset, s, font, physics, grabbedNode, hoverNode, hoverEdgeLink);
-
-        if (grabbedNode && grabbedNode->hg.get() == this) {
-            grabbedNode->highlight = HIGHLIGHT_INTENSITY;
-            grabbedNode->predraw(scaledOrigin, offset, s, font);
-            grabbedNode->draw(scaledOrigin, offset, s, font);
-            if (grabbedNode->content && s * scale() > HIDE_CONTENT_SCALE)
-                grabbedNode->content->draw(origin, offset, s, font, physics, grabbedNode, hoverNode, hoverEdgeLink);
+                n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
+        for (auto& sn : selectedNodes) {
+            if (sn.first && sn.first->hg.get() == this) {
+                sn.first->highlight = HIGHLIGHT_INTENSITY;
+                sn.first->predraw(scaledOrigin, offset, s, font);
+                sn.first->draw(scaledOrigin, offset, s, font);
+                if (sn.first->content && s * scale() > HIDE_CONTENT_SCALE)
+                    sn.first->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
+            }
         }
     }
 
