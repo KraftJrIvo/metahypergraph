@@ -28,6 +28,7 @@ namespace mhg {
             int nDrawableNodes = 0;
             int _nDrawableNodesCache = -1;
             float _scaleCache;
+            Vector2 _scaledOcache;
 
             bool isChildOf(HyperGraphPtr hg);
             void clear();
@@ -38,7 +39,7 @@ namespace mhg {
             void addNode(NodePtr node);
             void removeNode(NodePtr node, bool removeOuterEdges = true);
             void transferNode(NodePtr node, bool moveEdges = true);
-            EdgePtr addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to);
+            EdgePtr addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to, const EdgeLinkParams& params = {});
             void addEdge(EdgePtr edge);
             void removeEdge(EdgePtr edge, bool clear = true);
             void reduceEdge(EdgePtr edge, bool clear = true);

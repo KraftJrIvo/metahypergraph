@@ -16,7 +16,7 @@ void mhg::Edge::findArrowPositionBezier(Vector2 p0, Vector2 c1, Vector2 p2, bool
         pos = getPoint(p0, c1, p2, middle);
         float distToPt = Vector2Distance(pos, nodepos);
         angle = atan2(nodepos.y - pos.y, nodepos.x - pos.x);
-        float distToBorder = node->_rCache;
+        float distToBorder = node->dp.rCache;
         float diff = distToBorder - distToPt;
         if (abs(diff) < threshold)
             break;

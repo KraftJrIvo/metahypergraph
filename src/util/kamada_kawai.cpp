@@ -10,10 +10,10 @@ void mhg::HyperGraph::kamadaKawai() {
     mhg::Vector Exs = mhg::Vector::Zero(N);
     mhg::Vector Eys = mhg::Vector::Zero(N);
     for (size_t m = 0; m < N; ++m) {
-        const auto& pos_m = _nodes[m]->pos;
+        const auto& pos_m = _nodes[m]->dp.pos;
         for (size_t i = m; i < N; ++i) {
             if (i != m) {
-                const auto& pos_i = _nodes[i]->pos;
+                const auto& pos_i = _nodes[i]->dp.pos;
                 const float denom = 1.0f / Vector2Distance(pos_m, pos_i);
                 const auto E = K(m, i) * (pos_m - pos_i - L(m, i) * (pos_m - pos_i) * denom);
                 Ex(m, i) = Ex(i, m) = E.x;
@@ -43,13 +43,13 @@ void mhg::HyperGraph::kamadaKawai() {
     };
 
     auto updateE = [&](size_t idx) {
-        const auto& posM = _nodes[idx]->pos;
+        const auto& posM = _nodes[idx]->dp.pos;
         Vector2 dE_dpos = Vector2Zero();
         for (size_t i = 0; i < N; ++i) {
             if (i != idx) {
                 const float oldDx = Ex(idx, i);
                 const float oldDy = Ey(idx, i);
-                const auto& posI = _nodes[i]->pos;
+                const auto& posI = _nodes[i]->dp.pos;
                 const float denom = 1.0f / Vector2Distance(posI, posM);
                 float dx = K(idx, i) * (posM.x - posI.x - L(idx, i) * (posM.x - posI.x) * denom);
                 float dy = K(idx, i) * (posM.y - posI.y - L(idx, i) * (posM.y - posI.y) * denom);
@@ -78,10 +78,10 @@ void mhg::HyperGraph::kamadaKawai() {
         float d2E_dx2 = 0;
         float d2E_dxdy = 0;
         float d2E_dy2 = 0;
-        const auto& posM = _nodes[idx]->pos;
+        const auto& posM = _nodes[idx]->dp.pos;
         for (size_t i = 0; i < N; ++i) {
             if (i != idx) {
-                const auto& posI = _nodes[i]->pos;
+                const auto& posI = _nodes[i]->dp.pos;
                 const float denom = 1.0f / std::pow(Vector2DistanceSqr(posM, posI), 1.5);
                 const float kmat = K(idx, i);
                 const float lmat = L(idx, i);
@@ -97,7 +97,7 @@ void mhg::HyperGraph::kamadaKawai() {
         const auto& J = dE_dpos.y;
         const float dy = (C / A + J / B) / (B / A - I / B);
         const float dx = -(B * dy + C) / A;
-        _nodes[idx]->pos += {dx, dy};
+        _nodes[idx]->dp.pos += {dx, dy};
         updateE(idx);
     };
     while (maxEnrg > THRESH && its < MAX_ITS) {

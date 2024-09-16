@@ -23,10 +23,6 @@ namespace mhg {
         return (lhs->style->label == rhs->style->label && c1 < c2) || (lhs->style->label < rhs->style->label);
     }
 
-    EdgePtr EdgeLink::edge() {
-        return hg->getEdge(eIdx);
-    }
-
     Texture2D Edge::getArrowHead() {
         static Texture2D tex;
         static bool loaded = false;
@@ -44,7 +40,7 @@ namespace mhg {
     }
 
     void Edge::reposition() {
-        via->pos = 0.5f * (from->pos + to->pos);
+        via->dp.pos = 0.5f * (from->dp.pos + to->dp.pos);
     }
 
     bool Edge::similar(EdgePtr edge) {
@@ -84,26 +80,22 @@ namespace mhg {
         }
     }
 
-    void Edge::reindex(HyperGraphPtr hg, size_t idx_) {
-        hg = hg;
+    void Edge::reindex(HyperGraphPtr hg_, size_t idx_) {
+        hg = hg_;
         idx = idx_;
-        for (auto& l : links) {
-            l->hg = hg;
-            l->eIdx = idx_;
-        }
     }
 
     EdgeLinkPtr Edge::draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics) {
-        float ls = via->hg->scale() * scale;
+        float ls = hg->scale() * scale;
         float minLvlNodeScale = scale * ((from->hg->scale() > to->hg->scale()) ? from->hg->scale() : to->hg->scale());
         float maxLvlNodeScale = scale * ((from->hg->scale() < to->hg->scale()) ? from->hg->scale() : to->hg->scale());
-        bool fromSameHG = (from->hg == via->hg);
-        bool toSameHG = (to->hg == via->hg);
+        bool fromSameHG = (from->hg == hg);
+        bool toSameHG = (to->hg == hg);
         bool notSame = !fromSameHG || !toSameHG;
 
-        Vector2 pt0 = fromSameHG ? (origin + ls * from->pos + offset) : from->_posCache;
-        Vector2 pt2 = toSameHG ? (origin + ls * to->pos + offset) : to->_posCache;
-        Vector2 pt1 = (notSame || !physics) ? (0.5f * (pt0 + pt2)) : (origin + ls * via->pos + offset);
+        Vector2 pt0 = fromSameHG ? (origin + ls * from->dp.pos + offset) : from->dp.posCache;
+        Vector2 pt2 = toSameHG ? (origin + ls * to->dp.pos + offset) : to->dp.posCache;
+        Vector2 pt1 = (notSame || !physics) ? (0.5f * (pt0 + pt2)) : (origin + ls * via->dp.pos + offset);
         Vector2 pt0m, pt1m, pt2m;
 
         Vector2 apos; float angle; float t1; 
@@ -111,8 +103,8 @@ namespace mhg {
         Vector2 apos2; float angle2; float t2;
         findArrowPositionBezier(pt0, pt1, pt2, true, minLvlNodeScale, apos2, angle2, t2);
 
-        float fromSpreadStep = (2 * PI / ((from->hyper ? 1 : LINKS_DENSITY) * from->nLinks()));
-        float toSpreadStep = (2 * PI / ((to->hyper ? 1 : LINKS_DENSITY) * to->nLinks()));
+        float fromSpreadStep = (2 * PI / ((from->hyper ? 1 : LINKS_DENSITY) * from->getLinksCount()));
+        float toSpreadStep = (2 * PI / ((to->hyper ? 1 : LINKS_DENSITY) * to->getLinksCount()));
         float fromSpread = fromSpreadStep * links.size();
         float toSpread = toSpreadStep * links.size();
         float aFromStep = fromSpread / (links.size() + 1);
@@ -127,8 +119,8 @@ namespace mhg {
 
        for (auto& l : links) {
             if (links.size() > 1) {
-                pt0m = pt0 + from->_rCache * Vector2{ cos(a1), sin(a1) };
-                pt2m = pt2 + to->_rCache * Vector2{ cos(a2), sin(a2) };
+                pt0m = pt0 + from->dp.rCache * Vector2{ cos(a1), sin(a1) };
+                pt2m = pt2 + to->dp.rCache * Vector2{ cos(a2), sin(a2) };
                 pt1m = pt1 + (pt0m - pt0 + pt2m - pt2) * 0.5f;
 
                 a1 += aFromStep;

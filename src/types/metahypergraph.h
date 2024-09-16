@@ -37,7 +37,7 @@ namespace mhg {
             void removeNode(NodePtr node);
             void moveNode(NodePtr node, Vector2 prvPos, Vector2 newPos);
             void transferNode(HyperGraphPtr to, NodePtr node);
-            EdgePtr addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to);
+            EdgePtr addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to, const EdgeLinkParams& params = {});
             void removeEdge(EdgePtr edge);
             void reduceEdge(EdgePtr edge);
             NodePtr addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);

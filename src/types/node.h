@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <set>
 
@@ -13,36 +14,47 @@
 
 namespace mhg {
 
+    struct NodeParams {
+        std::string label;
+        Color color;
+    };
+
+    struct NodeDrawParams {
+        Vector2 pos = Vector2Zero();
+        Vector2 posCache;
+        float rCache;
+        float highlight = 0.0f;
+        bool editing = false;
+    };
+
     struct Node {
         HyperGraphPtr hg = nullptr;
         HyperGraphPtr content = nullptr;
         size_t idx = -1;
-        std::string label;
-        Color color;
         bool via;
         bool hyper;
 
-        std::set<EdgePtr> edgesIn;
-        std::set<EdgePtr> edgesOut;
+        std::set<EdgePtr> eIn;
+        std::set<EdgePtr> eOut;
 
-        Vector2 pos = Vector2Zero();
-        Vector2 _posCache;
-        float _rCache;
+        NodeParams p;
+        NodeDrawParams dp;
 
-        float highlight = 0.0f;
-        bool editing = false;
-
-        Node(HyperGraphPtr hg, size_t idx, const std::string& label, const Color& color, bool via = false, bool hyper = false) :
-            hg(hg), idx(idx), label(label), color(color), via(via), hyper(hyper)
+        Node(HyperGraphPtr hg, size_t idx, const NodeParams& params, bool via = false, bool hyper = false) :
+            hg(hg), idx(idx), p(params), via(via), hyper(hyper)
         { }
 
-        size_t maxLinks();
-        size_t nLinks();
-        EdgePtr edgeTo(NodePtr node);
-        EdgePtr similarEdge(EdgePtr edge);
+        size_t getMaxLinks();
+        size_t getLinksCount();
+        EdgePtr getEdgeTo(NodePtr node);
+        EdgePtr getSimilarEdge(EdgePtr edge);
 
         void predraw(Vector2 origin, Vector2 offset, float scale, const Font& font);
         bool draw(Vector2 orign, Vector2 offset, float scale, const Font& font);
+
+        static NodePtr create(HyperGraphPtr hg, size_t idx, const NodeParams& params, bool via = false, bool hyper = false) {
+            return std::make_shared<Node>(hg, idx, params, via, hyper);
+        }
     };
 
 }

@@ -1,5 +1,7 @@
 #include "hypergraph.h"
 #include "base.h"
+#include "edge.h"
+#include "node.h"
 #include "raylib.h"
 #include <cstddef>
 #include <iterator>
@@ -27,35 +29,35 @@ namespace mhg {
         for (auto& n : _nodes) {
             if (n.second->content)
                 n.second->content->removeOuterEdges(hg);
-            auto edgesIn = n.second->edgesIn;
-            for (auto& e : edgesIn)
+            auto eIn = n.second->eIn;
+            for (auto& e : eIn)
                 if (!e->from->hg->isChildOf(hg) || !e->to->hg->isChildOf(hg)) {
-                    e->via->hg->removeEdge(e);
-                    pmhg.noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e, .els = (*e->links.begin())->style, .elp = (*e->links.begin())->params}, false);            
+                    e->hg->removeEdge(e);
+                    pmhg.noticeAction({.type = MHGactionType::EDGE, .inverse = true, .e = e, .els = (*e->links.begin())->style, .elp = (*e->links.begin())->params}, false);            
                 }
-            auto edgesOut = n.second->edgesOut;
-            for (auto& e : edgesOut) {
+            auto eOut = n.second->eOut;
+            for (auto& e : eOut) {
                 if (!e->from->hg->isChildOf(hg) || !e->to->hg->isChildOf(hg)) {
-                    e->via->hg->removeEdge(e);
-                    pmhg.noticeAction(MHGaction{.type = MHGactionType::EDGE, .inverse = true, .e = e, .els = (*e->links.begin())->style, .elp = (*e->links.begin())->params}, false);            
+                    e->hg->removeEdge(e);
+                    pmhg.noticeAction({.type = MHGactionType::EDGE, .inverse = true, .e = e, .els = (*e->links.begin())->style, .elp = (*e->links.begin())->params}, false);            
                 }
             }
         }
     }
 
     void HyperGraph::checkForTransferEdges(NodePtr node) {
-        auto edgesIn = node->edgesIn;
-        for (auto& e : edgesIn) {
+        auto eIn = node->eIn;
+        for (auto& e : eIn) {
             auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
             auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
-            if (e->via->hg != maxLvlHg)
+            if (e->hg != maxLvlHg)
                 maxLvlHg->transferEdge(e);
         }        
-        auto edgesOut = node->edgesOut;
-        for (auto& e : edgesOut) {
+        auto eOut = node->eOut;
+        for (auto& e : eOut) {
             auto otherHg = (e->to->hg == node->hg) ? e->from->hg : e->to->hg;
             auto maxLvlHg = (lvl > otherHg->lvl) ? self : otherHg;
-            if (e->via->hg != maxLvlHg)
+            if (e->hg != maxLvlHg)
                 maxLvlHg->transferEdge(e);
         }
         if (node->content)
@@ -82,7 +84,7 @@ namespace mhg {
     }
 
     NodePtr HyperGraph::addNode(const std::string &label, const Color &color, bool via, bool hyper) {
-        auto node = std::make_shared<Node>(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, label, color, via, hyper);
+        auto node = Node::create(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, NodeParams{label, color}, via, hyper);
         addNode(node);
         return node;
     }
@@ -111,13 +113,13 @@ namespace mhg {
         if (rmOuterEdges) {
             if (node->content)
                 node->content->removeOuterEdges(node->content);            
-            auto edgesIn = node->edgesIn;
-            for (auto& e : edgesIn) {
-                e->via->hg->removeEdge(e);
+            auto eIn = node->eIn;
+            for (auto& e : eIn) {
+                e->hg->removeEdge(e);
             }
-            auto edgesOut = node->edgesOut;
-            for (auto& e : edgesOut) {
-                e->via->hg->removeEdge(e);
+            auto eOut = node->eOut;
+            for (auto& e : eOut) {
+                e->hg->removeEdge(e);
             }
         }
         _nodes.erase(node->idx);
@@ -130,18 +132,21 @@ namespace mhg {
         nDrawableNodes += off;
         float aftCoeff = scale();
         for (auto& n : _nodes)
-            n.second->pos = n.second->pos * preCoeff / aftCoeff;
+            n.second->dp.pos = n.second->dp.pos * preCoeff / aftCoeff;
     }
 
-    EdgePtr HyperGraph::addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to) {
-        auto sim = from->edgeTo(to);
+    EdgePtr HyperGraph::addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to, const EdgeLinkParams& params) {
+        auto sim = from->getEdgeTo(to);
         if (sim) {
-            auto edge = std::make_shared<Edge>(self, sim->idx, style, from, nullptr, to);
+            auto edge = Edge::create(self, sim->idx, from, nullptr, to);
+            edge->links.insert(EdgeLink::create(sim, style, params));
             sim->fuse(edge);
             return sim;
         }
-        auto via = std::make_shared<Node>(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, "", BLANK, true, false);
-        auto edge = std::make_shared<Edge>(self, _edges.size() ? (_edges.rbegin()->first + 1) : 0, style, from, via, to);
+        auto via = Node::create(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, {}, true, false);
+        auto idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
+        auto edge = Edge::create(self, idx, from, via, to);
+        edge->links.insert(EdgeLink::create(edge, style, params));
         addEdge(edge);
         return edge;
     }
@@ -149,14 +154,14 @@ namespace mhg {
     void HyperGraph::addEdge(EdgePtr edge) {
         addNode(edge->via);
         _edges[edge->idx] = edge;
-        edge->from->edgesOut.insert(edge);
-        edge->to->edgesIn.insert(edge);
+        edge->from->eOut.insert(edge);
+        edge->to->eIn.insert(edge);
     }
 
     void HyperGraph::removeEdge(EdgePtr edge, bool clear) {
         if (clear) {
-            edge->to->edgesIn.erase(edge);
-            edge->from->edgesOut.erase(edge);
+            edge->to->eIn.erase(edge);
+            edge->from->eOut.erase(edge);
         }
         removeNode(edge->via);
         _edges.erase(edge->idx);
@@ -170,11 +175,11 @@ namespace mhg {
     }
             
     void HyperGraph::transferEdge(EdgePtr edge) {
-        edge->via->hg->removeEdge(edge, false);
+        edge->hg->removeEdge(edge, false);
         size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
         _edges[idx] = edge;
         edge->reindex(self, idx);
-        self->transferNode(edge->via, false);
+        transferNode(edge->via, false);
     }
 
     NodePtr HyperGraph::addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos) {
@@ -195,9 +200,9 @@ namespace mhg {
         for (auto l : edge->links)
             tos.push_back({l->style, edge->to});
         auto node = addHyperEdge(froms, tos);
-        node->pos = (edge->from->pos + edge->to->pos) * 0.5f;
-        (*node->edgesIn.begin())->reposition();
-        (*node->edgesOut.begin())->reposition();
+        node->dp.pos = (edge->from->dp.pos + edge->to->dp.pos) * 0.5f;
+        (*node->eIn.begin())->reposition();
+        (*node->eOut.begin())->reposition();
         return node;
     }
 
@@ -207,7 +212,7 @@ namespace mhg {
         float angle;
         for (auto& n : _nodes) {
             angle = 2.0f * 3.14159f * RAND_FLOAT;
-            n.second->pos = NODE_SZ * Vector2{ cos(angle), sin(angle) };
+            n.second->dp.pos = NODE_SZ * Vector2{ cos(angle), sin(angle) };
             if (n.second->content)
                 n.second->content->reposition(seed);
         }
@@ -229,7 +234,7 @@ namespace mhg {
     Vector2 HyperGraph::getCenter() {
         Vector2 acc = Vector2Zero();
         for (auto n : _nodes)
-            acc += n.second->pos;
+            acc += n.second->dp.pos;
         return acc / _nodes.size();
     }            
     
@@ -239,18 +244,21 @@ namespace mhg {
     
     void HyperGraph::move(const Vector2 delta) {
         for (auto& n : _nodes)
-            n.second->pos += delta;
+            n.second->dp.pos += delta;
     }
 
     void HyperGraph::draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, 
         NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink) 
     {
-        origin += (parent ? (parent->hg->scale() * parent->pos) : Vector2Zero());
+        origin += (parent ? (parent->hg->scale() * parent->dp.pos) : Vector2Zero());
         Vector2 scaledOrigin = origin * s;
+        _scaledOcache = scaledOrigin;
         for (auto& n : _nodes)
             if (!n.second->via)
                 n.second->predraw(scaledOrigin, offset, s, font);
         for (auto& e : _edges) {
+            if (selectedNodes.count(e.second->from) && selectedNodes.count(e.second->to))
+                e.second->highlight = HIGHLIGHT_INTENSITY_2;
             auto hoverLink = e.second->draw(scaledOrigin, offset, s, font, physics);
             if (hoverLink)
                 hoverEdgeLink = hoverLink;
@@ -261,12 +269,30 @@ namespace mhg {
                     hoverNode = n.second;
             }
         }
-        for (auto& n : _nodes)
-            if (n.second->content && s * scale() > HIDE_CONTENT_SCALE)
+        for (auto& n : _nodes) {
+            if (n.second->content && s * scale() > HIDE_CONTENT_SCALE) 
                 n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
+            bool childOfSelected = false;
+            for (auto& sn : selectedNodes) {
+                if (sn.first->content && n.second->hg->isChildOf(sn.first->content)) {
+                    childOfSelected = true;
+                    break;
+                }
+            }
+            if (childOfSelected) {
+                for (auto& e : n.second->eIn)
+                    if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
+                        if (e->hg != n.second->hg)
+                            e->draw(e->hg->_scaledOcache, offset, s, font, physics);
+                for (auto& e : n.second->eOut)
+                    if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
+                        if (e->hg != n.second->hg)
+                            e->draw(e->hg->_scaledOcache, offset, s, font, physics);
+            }
+        }
         for (auto& sn : selectedNodes) {
             if (sn.first && sn.first->hg.get() == this) {
-                sn.first->highlight = HIGHLIGHT_INTENSITY;
+                sn.first->dp.highlight = HIGHLIGHT_INTENSITY_2;
                 sn.first->predraw(scaledOrigin, offset, s, font);
                 sn.first->draw(scaledOrigin, offset, s, font);
                 if (sn.first->content && s * scale() > HIDE_CONTENT_SCALE)
@@ -284,7 +310,7 @@ namespace mhg {
                 node = n.second->content->getNodeAt(pos, except);
             if (node)
                 return node;
-            bool hover = (n.second->_rCache * n.second->_rCache > Vector2DistanceSqr(pos, n.second->_posCache));
+            bool hover = (n.second->dp.rCache * n.second->dp.rCache > Vector2DistanceSqr(pos, n.second->dp.posCache));
             if (hover)
                 return n.second;
         }

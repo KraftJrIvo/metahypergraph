@@ -9,39 +9,39 @@
 
 namespace mhg {
 
-    size_t Node::maxLinks() {
+    size_t Node::getMaxLinks() {
         size_t maxLinks = 0;
-        for (auto& e : edgesIn)
+        for (auto& e : eIn)
             maxLinks = std::max(e->links.size(), maxLinks);
-        for (auto& e : edgesOut)
+        for (auto& e : eOut)
             maxLinks = std::max(e->links.size(), maxLinks);
         return maxLinks;
     }
 
-    size_t Node::nLinks() {
+    size_t Node::getLinksCount() {
         size_t nLinks = 0;
-        for (auto& e : edgesIn)
+        for (auto& e : eIn)
             nLinks += e->links.size();
-        for (auto& e : edgesOut)
+        for (auto& e : eOut)
             nLinks += e->links.size();
         return nLinks;
     }
 
-    EdgePtr Node::edgeTo(NodePtr node) {
-        for (auto& e : edgesIn)
+    EdgePtr Node::getEdgeTo(NodePtr node) {
+        for (auto& e : eIn)
             if (e->from == node || e->to == node)
                 return e;
-        for (auto& e : edgesOut)
+        for (auto& e : eOut)
             if (e->from == node || e->to == node)
                 return e;
         return nullptr;
     }
 
-    EdgePtr Node::similarEdge(EdgePtr edge) {
-        for (auto& e : edgesIn)
+    EdgePtr Node::getSimilarEdge(EdgePtr edge) {
+        for (auto& e : eIn)
             if (e->similar(edge))
                 return e;
-        for (auto& e : edgesOut)
+        for (auto& e : eOut)
             if (e->similar(edge))
                 return e;
         return nullptr;
@@ -49,51 +49,51 @@ namespace mhg {
 
     void Node::predraw(Vector2 origin, Vector2 offset, float scale, const Font& font) {
         float ls = hg->scale() * scale;
-        Vector2 posmod = origin + pos * ls + offset;
-        _posCache = posmod;
+        Vector2 posmod = origin + dp.pos * ls + offset;
+        dp.posCache = posmod;
         if (hyper) {
-            float r = std::clamp((1 + maxLinks()) * EDGE_THICK * ls, 1.0f, (1 + maxLinks()) * EDGE_THICK);
-            _rCache = r;
+            float r = std::clamp((1 + getMaxLinks()) * EDGE_THICK * ls, 1.0f, (1 + getMaxLinks()) * EDGE_THICK);
+            dp.rCache = r;
         } else {
             float thick = std::clamp(NODE_BORDER * ls, 1.0f, NODE_BORDER);
             float r = (NODE_SZ) * ls + thick;
-            _rCache = (NODE_SZ) * ls;
-            DrawCircleV(posmod, r, ColorBrightness({ 140, 140, 140, 255 }, highlight));
+            dp.rCache = (NODE_SZ) * ls;
+            DrawCircleV(posmod, r, ColorBrightness({ 140, 140, 140, 255 }, dp.highlight));
         }
     }
 
     bool Node::draw(Vector2 origin, Vector2 offset, float scale, const Font& font) {
         float ls = hg->scale() * scale;
-        Vector2 posmod = origin + pos * ls + offset;
+        Vector2 posmod = origin + dp.pos * ls + offset;
         bool hover;
         if (hyper) {
-            hover = (_rCache * _rCache > Vector2DistanceSqr(GetMousePosition(), posmod));
+            hover = (dp.rCache * dp.rCache > Vector2DistanceSqr(GetMousePosition(), posmod));
             Vector3 c = Vector3Zero();
             float n = 0;
-            for (auto& e : edgesIn) {
+            for (auto& e : eIn) {
                 for (auto& l : e->links) {
                     c = c + Vector3{(float)l->style->color.r, (float)l->style->color.g, (float)l->style->color.b};
                     n++;
                 }
             }
-            for (auto& e : edgesOut) {
+            for (auto& e : eOut) {
                 for (auto& l : e->links) {
                     c = c + Vector3{(float)l->style->color.r, (float)l->style->color.g, (float)l->style->color.b};
                     n++;
                 }
             }
             Color avgColor = (n > 0) ? Color{ uint8_t(c.x / n), uint8_t(c.y / n), uint8_t(c.z / n), 255 } : WHITE;
-            DrawCircleV(posmod, _rCache, ColorBrightness(avgColor, highlight));
+            DrawCircleV(posmod, dp.rCache, ColorBrightness(avgColor, dp.highlight));
         } else {
             float r = NODE_SZ * ls;
             hover = (r * r > Vector2DistanceSqr(GetMousePosition(), posmod));
             bool hasContent = content && content->nodesCount();
             bool drawContent = (hasContent && ls > HIDE_CONTENT_SCALE);
-            Color c = editing ? BLUE : ((hasContent && !drawContent) ? Color{ 140, 140, 140, 255 } : DARKGRAY);
+            Color c = dp.editing ? BLUE : ((hasContent && !drawContent) ? Color{ 140, 140, 140, 255 } : DARKGRAY);
             DrawCircleV(posmod, r, c);
-            bool drawLabel = editing || ls > HIDE_TXT_SCALE;
+            bool drawLabel = dp.editing || ls > HIDE_TXT_SCALE;
             if (drawLabel) {
-                auto sz = MeasureTextEx(font, label.c_str(), FONT_SZ, 0);
+                auto sz = MeasureTextEx(font, p.label.c_str(), FONT_SZ, 0);
                 Vector2 txtpos = posmod - sz * 0.5f;
                 float txtsz = sz.y;
                 bool labelFits = (0.8f * sz.x < sqrt(2) * r);
@@ -102,10 +102,10 @@ namespace mhg {
                     float rr = r + thick;
                     txtpos.y += (rr + txtsz * 0.5f) * ((hg->lvl % 2) ? 1.0f : -1.0f);
                 }
-                DrawTextEx(font, label.c_str(), txtpos, txtsz, 0, WHITE);
+                DrawTextEx(font, p.label.c_str(), txtpos, txtsz, 0, WHITE);
             }
         }
-        highlight = 0.0f;
+        dp.highlight = 0.0f;
         return hover;
     }
 
