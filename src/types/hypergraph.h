@@ -60,6 +60,7 @@ namespace mhg {
 
             void draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
+            void getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except = {});
 
             NodePtr getNode(size_t idx) {return _nodes.count(idx) ? _nodes.at(idx) : nullptr;}
             EdgePtr getEdge(size_t idx) {return _edges.count(idx) ? _edges.at(idx) : nullptr;}

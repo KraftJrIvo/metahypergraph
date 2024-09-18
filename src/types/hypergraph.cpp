@@ -316,5 +316,17 @@ namespace mhg {
         }
         return nullptr;
     }
-
+    
+    void HyperGraph::getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except) {
+        for (auto& n : _nodes) {
+            auto r = n.second->dp.rCache;
+            Rectangle radiusRect = {rect.x + r, rect.y + r, rect.width - r * 2, rect.height - r * 2};
+            if (!except.count(n.second)) {                
+                if (CheckCollisionPointRec(n.second->dp.posCache, radiusRect))
+                    result.insert(n.second);
+                else if (n.second->content)
+                    n.second->content->getNodesIn(rect, result, except);
+            }
+        }
+    }
 }

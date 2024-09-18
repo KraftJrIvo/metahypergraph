@@ -57,6 +57,8 @@ namespace mhg {
         uint8_t _editingColorIdx = 0;
 
         std::map<NodePtr, std::pair<Vector2, Vector2>> _selectedNodes;
+        Vector2 _selectionStart = Vector2Zero();
+        Rectangle _selectionRect;
 
         std::string _labelPriorToEdit;
         Color _colorPriorToEdit;
@@ -249,6 +251,8 @@ namespace mhg {
                     }
                 } else {
                     _selectedNodes.clear();
+                    if (IsKeyDown(KEY_LEFT_CONTROL))
+                        _selectionStart = mpos;
                 }
             } else if (_grabbedNode) {
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -273,6 +277,14 @@ namespace mhg {
                         n.first->dp.pos = ((mpos - _offset + _curOffset) + n.second.second) / ls;
                     }
                 }
+            } else if (_selectionStart.x > 0) {
+                _selectedNodes.clear();
+                std::set<NodePtr> selected;
+                _mhg.getNodesIn(_selectionRect, selected);
+                for (auto sn : selected)
+                    _selectedNodes[sn] = {Vector2Zero(), Vector2Zero()};
+                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+                    _selectionStart = Vector2Zero();
             }
             
             // TOGGLE FULLSCREEN
@@ -373,8 +385,10 @@ namespace mhg {
             if (IsKeyPressed(KEY_H)) {
                 if (_hoverEdgeLink)
                     _makeHyperAndMoveToMpos(_hoverEdgeLink->edge, mpos);
-                else if (_hoverNode)
+                else if (_hoverNode) {
                     _hoverNode->hyper = !_hoverNode->hyper;
+                    _mhg.noticeAction({.type = MHGactionType::HYPER, .inverse = _hoverNode->hyper, .n = _hoverNode});
+                }
             }
             
             // HISTORY
@@ -397,6 +411,13 @@ namespace mhg {
             auto from = _addEdgeFromNode ? _addEdgeFromNode->dp.posCache : _addEdgeFromMpos;
             auto to = GetMousePosition();
             DrawLineEx(from, to, EDGE_THICK, WHITE);
+        }
+        if (_selectionStart.x > 0) {
+            auto mpos = GetMousePosition();
+            _selectionRect = Rectangle{std::min(_selectionStart.x, mpos.x), std::min(_selectionStart.y, mpos.y), fabs(mpos.x - _selectionStart.x), fabs(mpos.y - _selectionStart.y)};
+            DrawRectangleLines(_selectionRect.x, _selectionRect.y, _selectionRect.width, _selectionRect.height, WHITE);
+            _hoverNode = nullptr;
+            _hoverEdgeLink = nullptr;
         }
         if (_hoverEdgeLink) _hoverEdgeLink->highlight = HIGHLIGHT_INTENSITY;
         if (_hoverNode) _hoverNode->dp.highlight = HIGHLIGHT_INTENSITY;

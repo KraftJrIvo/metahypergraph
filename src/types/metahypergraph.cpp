@@ -236,6 +236,9 @@ namespace mhg {
         case MHGactionType::MOVE:
             action.n->dp.pos = inv ? action.prv : action.cur;
             break;
+        case mhg::MHGactionType::HYPER:
+            action.n->hyper = inv;
+            break;
         default:
             break;
         }
@@ -278,5 +281,9 @@ namespace mhg {
 
     NodePtr MetaHyperGraph::getNodeAt(Vector2 pos, const std::set<NodePtr>& except) {
         return _root->getNodeAt(pos, except);
+    }
+
+    void MetaHyperGraph::getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except) {
+        _root->getNodesIn(rect, result, except);
     }
 }

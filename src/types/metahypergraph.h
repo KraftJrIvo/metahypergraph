@@ -11,7 +11,7 @@
 
 namespace mhg {
 
-    enum class MHGactionType { SEP, NODE, EDGE, MOVE, TRANSFER };  
+    enum class MHGactionType { SEP, NODE, EDGE, MOVE, TRANSFER, HYPER };  
     struct MHGaction {
         MHGactionType type = MHGactionType::SEP;
         bool inverse = false;
@@ -51,6 +51,7 @@ namespace mhg {
 
             void draw(Vector2 offset, float scale, const Font& font, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
+            void getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except = {});
 
             void noticeAction(const MHGaction& action, bool sep = true);
 

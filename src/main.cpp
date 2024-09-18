@@ -6,6 +6,10 @@
 #define W_W 512
 #define W_H 512
 
+// TODO
+// merge
+// duplication
+
 int main(int argc, char *argv[]) {
 	
     mhg::MetaHyperGraph mhg;
