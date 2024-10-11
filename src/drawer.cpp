@@ -64,7 +64,7 @@ namespace mhg {
         Color _colorPriorToEdit;
 
         NodePtr _makeHyperAndMoveToMpos(EdgePtr edge, Vector2 pos);
-        void _dropNode(NodePtr node, Vector2 pos);
+        void _dropNode(NodePtr node, Vector2 pos, const std::set<NodePtr>& except = {});
 
         void _startEditingNode(NodePtr node);
         void _startEditingEdgeLink(EdgeLinkPtr el);
@@ -185,8 +185,8 @@ namespace mhg {
         return hyperNode;
     }
 
-    void DrawerImpl::_dropNode(NodePtr node, Vector2 pos) {
-        auto dropNode = _mhg.getNodeAt(pos, {node});
+    void DrawerImpl::_dropNode(NodePtr node, Vector2 pos, const std::set<NodePtr>& except) {
+        auto dropNode = _mhg.getNodeAt(pos, except);
         auto dropHG = dropNode ? dropNode->content : _mhg._root;
         if (dropHG != node->hg && (!dropHG || !dropHG->parent || !_selectedNodes.count(dropHG->parent))) {
             if (!dropHG) {
@@ -261,9 +261,12 @@ namespace mhg {
                         _mhg.moveNode(n.first, n.second.first, n.first->dp.pos);
                         if (_mhg._historyRecording) _mhg._histIt-=2;
                     }
+                    std::set<NodePtr> exceptSelected;
+                    for (auto& sn : _selectedNodes)
+                        exceptSelected.insert(sn.first);
                     for (auto& n : selectedNodes)
                         if (!n.first->via)
-                            _dropNode(n.first, n.first->dp.posCache);
+                            _dropNode(n.first, n.first->dp.posCache, exceptSelected);
                     int c = 0;
                     for (auto& n : selectedNodes) {
                         _mhg.moveNode(n.first, n.second.first, n.first->dp.pos);
@@ -406,6 +409,18 @@ namespace mhg {
         ClearBackground(BLACK);
         _hoverNode = nullptr;
         _hoverEdgeLink = nullptr;
+        if (_grabbedNode) {
+            std::set<NodePtr> exceptSelected;
+            for (auto& sn : _selectedNodes)
+                exceptSelected.insert(sn.first);
+            for (auto& sn : _selectedNodes) {
+                sn.first->dp.overNode = _mhg.getNodeAt(sn.first->dp.posCache, exceptSelected);
+                if (sn.first->dp.overNode)
+                    if (!sn.first->hg->parent || sn.first->dp.overNode != sn.first->hg->parent)
+                        sn.first->dp.overNode->dp.tmpDrawableNodes++;
+                sn.first->dp.overRoot = !bool(sn.first->dp.overNode);
+            }
+        }
         _mhg.draw(_offset + _curOffset, _scale, _font, _selectedNodes, _hoverNode, _hoverEdgeLink);
         if (_addEdgeFromNode || _addEdgeFromEdge) {
             auto from = _addEdgeFromNode ? _addEdgeFromNode->dp.posCache : _addEdgeFromMpos;

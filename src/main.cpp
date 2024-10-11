@@ -3,8 +3,8 @@
 
 #include <thread>
 
-#define W_W 512
-#define W_H 512
+#define W_W 768
+#define W_H 768
 
 // TODO
 // merge

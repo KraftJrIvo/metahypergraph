@@ -9,6 +9,18 @@
 
 namespace mhg {
 
+    float Node::coeff() {
+        return 1.0f / ((content ? content->nDrawableNodes : 0) + dp.tmpDrawableNodes + 1);
+    }
+    
+    size_t Node::nodesCount() {
+        return dp.tmpDrawableNodes + (content ? content->nodesCount() : 0);
+    }
+
+    float Node::scale() {
+        return hg->scale() * coeff();
+    }
+
     size_t Node::getMaxLinks() {
         size_t maxLinks = 0;
         for (auto& e : eIn)
@@ -51,15 +63,18 @@ namespace mhg {
         float ls = hg->scale() * scale;
         Vector2 posmod = origin + dp.pos * ls + offset;
         dp.posCache = posmod;
+        bool willDrop = dp.highlight > 0 && ((dp.overNode && (!hg->parent || dp.overNode != hg->parent)) || dp.overRoot);
+        float ss = willDrop ? (dp.overRoot ? scale : (dp.overNode->scale() * scale)) : ls;
         if (hyper) {
-            float r = std::clamp((1 + getMaxLinks()) * EDGE_THICK * ls, 1.0f, (1 + getMaxLinks()) * EDGE_THICK);
+            float r = std::clamp((1 + getMaxLinks()) * EDGE_THICK * ss, 1.0f, (1 + getMaxLinks()) * EDGE_THICK);
             dp.rCache = r;
         } else {
-            float thick = std::clamp(NODE_BORDER * ls, 1.0f, NODE_BORDER);
-            float r = (NODE_SZ) * ls + thick;
-            dp.rCache = (NODE_SZ) * ls;
+            float thick = std::clamp(NODE_BORDER * ss, 1.0f, NODE_BORDER);
+            float r = (NODE_SZ) * ss + thick;
+            dp.rCache = (NODE_SZ) * ss;
             DrawCircleV(posmod, r, ColorBrightness({ 140, 140, 140, 255 }, dp.highlight));
         }
+        dp.rCacheStable = dp.rCache * (ls / ss);
     }
 
     bool Node::draw(Vector2 origin, Vector2 offset, float scale, const Font& font) {
@@ -85,7 +100,7 @@ namespace mhg {
             Color avgColor = (n > 0) ? Color{ uint8_t(c.x / n), uint8_t(c.y / n), uint8_t(c.z / n), 255 } : WHITE;
             DrawCircleV(posmod, dp.rCache, ColorBrightness(avgColor, dp.highlight));
         } else {
-            float r = NODE_SZ * ls;
+            float r = dp.rCache;
             hover = (r * r > Vector2DistanceSqr(GetMousePosition(), posmod));
             bool hasContent = content && content->nodesCount();
             bool drawContent = (hasContent && ls > HIDE_CONTENT_SCALE);
@@ -105,8 +120,13 @@ namespace mhg {
                 DrawTextEx(font, p.label.c_str(), txtpos, txtsz, 0, WHITE);
             }
         }
-        dp.highlight = 0.0f;
         return hover;
     }
 
+    void Node::resetDraw() {
+        dp.highlight = 0.0f;
+        dp.tmpDrawableNodes = 0;
+        dp.overNode = nullptr;
+        dp.overRoot = false;
+    }
 }

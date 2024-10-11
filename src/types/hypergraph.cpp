@@ -66,7 +66,7 @@ namespace mhg {
     }
 
     float HyperGraph::coeff() {
-        return 1.0f / (nDrawableNodes + 1);
+        return 1.0f / (nDrawableNodes + (parent ? parent->dp.tmpDrawableNodes : 0) + 1);
     }
     
     size_t HyperGraph::nodesCount() {
@@ -76,9 +76,7 @@ namespace mhg {
     float HyperGraph::scale() {
         if (!parent)
             return 1.0f;
-        if (_nDrawableNodesCache == nDrawableNodes)
-            return parent->hg->scale() * _scaleCache;
-        _nDrawableNodesCache = nDrawableNodes;
+        _nDrawableNodesCache = nDrawableNodes + (parent ? parent->dp.tmpDrawableNodes : 0);
         _scaleCache = coeff();
         return parent->hg->scale() * _scaleCache;
     }
@@ -270,16 +268,14 @@ namespace mhg {
             }
         }
         for (auto& n : _nodes) {
-            if (n.second->content && s * scale() > HIDE_CONTENT_SCALE) 
-                n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
-            bool childOfSelected = false;
+            bool childOrSelected = false;
             for (auto& sn : selectedNodes) {
-                if (sn.first->content && n.second->hg->isChildOf(sn.first->content)) {
-                    childOfSelected = true;
+                if ((sn.first == n.second) || sn.first->content && n.second->hg->isChildOf(sn.first->content)) {
+                    childOrSelected = true;
                     break;
                 }
             }
-            if (childOfSelected) {
+            if (childOrSelected) {
                 for (auto& e : n.second->eIn)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
                         if (e->hg != n.second->hg)
@@ -288,16 +284,40 @@ namespace mhg {
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
                         if (e->hg != n.second->hg)
                             e->draw(e->hg->_scaledOcache, offset, s, font, physics);
+            } else {
+                if (n.second->content && s * scale() > HIDE_CONTENT_SCALE) 
+                    n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
             }
         }
+    }
+
+    void HyperGraph::redrawSelected(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, 
+        NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink) 
+    {
+        origin += (parent ? (parent->hg->scale() * parent->dp.pos) : Vector2Zero());
+        Vector2 scaledOrigin = origin * s;
+        _scaledOcache = scaledOrigin;
+        bool big = s * scale() > HIDE_CONTENT_SCALE;
         for (auto& sn : selectedNodes) {
-            if (sn.first && sn.first->hg.get() == this) {
-                sn.first->dp.highlight = HIGHLIGHT_INTENSITY_2;
+            if (sn.first->hg.get() == this) {
                 sn.first->predraw(scaledOrigin, offset, s, font);
                 sn.first->draw(scaledOrigin, offset, s, font);
-                if (sn.first->content && s * scale() > HIDE_CONTENT_SCALE)
+                if (sn.first->content)
                     sn.first->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
             }
+        }
+        if (big) {
+            for (auto& n : _nodes)
+                if (n.second->content)
+                    n.second->content->redrawSelected(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
+        }
+    }
+
+    void HyperGraph::resetDraw() {
+        for (auto& n : _nodes) {
+            n.second->resetDraw();
+            if (n.second->content)
+                n.second->content->resetDraw();
         }
     }
 
@@ -305,14 +325,15 @@ namespace mhg {
         for (auto& n : _nodes) {
             if (n.second->via || n.second->hyper || except.count(n.second))
                 continue;
-            NodePtr node;
-            if (n.second->content)
-                node = n.second->content->getNodeAt(pos, except);
-            if (node)
-                return node;
-            bool hover = (n.second->dp.rCache * n.second->dp.rCache > Vector2DistanceSqr(pos, n.second->dp.posCache));
-            if (hover)
+            bool hover = (n.second->dp.rCacheStable * n.second->dp.rCacheStable > Vector2DistanceSqr(pos, n.second->dp.posCache));
+            if (hover) {
+                NodePtr node;
+                if (n.second->content)
+                    node = n.second->content->getNodeAt(pos, except);
+                if (node)
+                    return node;
                 return n.second;
+            }
         }
         return nullptr;
     }

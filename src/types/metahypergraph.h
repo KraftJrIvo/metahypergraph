@@ -50,6 +50,7 @@ namespace mhg {
             void redo();
 
             void draw(Vector2 offset, float scale, const Font& font, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
+
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
             void getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except = {});
 

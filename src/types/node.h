@@ -23,8 +23,12 @@ namespace mhg {
         Vector2 pos = Vector2Zero();
         Vector2 posCache;
         float rCache;
+        float rCacheStable;
         float highlight = 0.0f;
         bool editing = false;
+        int tmpDrawableNodes = 0;
+        NodePtr overNode = nullptr;
+        bool overRoot = false;
     };
 
     struct Node {
@@ -44,6 +48,10 @@ namespace mhg {
             hg(hg), idx(idx), p(params), via(via), hyper(hyper)
         { }
 
+        float coeff();        
+        size_t nodesCount();
+        float scale();
+
         size_t getMaxLinks();
         size_t getLinksCount();
         EdgePtr getEdgeTo(NodePtr node);
@@ -51,6 +59,7 @@ namespace mhg {
 
         void predraw(Vector2 origin, Vector2 offset, float scale, const Font& font);
         bool draw(Vector2 orign, Vector2 offset, float scale, const Font& font);
+        void resetDraw();
 
         static NodePtr create(HyperGraphPtr hg, size_t idx, const NodeParams& params, bool via = false, bool hyper = false) {
             return std::make_shared<Node>(hg, idx, params, via, hyper);

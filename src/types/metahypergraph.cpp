@@ -272,10 +272,11 @@ namespace mhg {
         }
     }
 
-
     void MetaHyperGraph::draw(Vector2 offset, float scale, const Font& font, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink) {
         _lock.lock();
         _root->draw(Vector2Zero(), offset, scale, font, _physicsEnabled, selectedNodes, hoverNode, hoverEdgeLink);
+        _root->redrawSelected(Vector2Zero(), offset, scale, font, _physicsEnabled, selectedNodes, hoverNode, hoverEdgeLink);
+        _root->resetDraw();
         _lock.unlock();
     }
 
