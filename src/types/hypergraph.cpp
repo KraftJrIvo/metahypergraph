@@ -77,8 +77,8 @@ namespace mhg {
         if (!parent)
             return 1.0f;
         _nDrawableNodesCache = nDrawableNodes + (parent ? parent->dp.tmpDrawableNodes : 0);
-        _scaleCache = coeff();
-        return parent->hg->scale() * _scaleCache;
+        bool willDrop = (parent->dp.overNode || parent->dp.overRoot);
+        return (willDrop ? ((parent->dp.overNode ? (parent->dp.overNode->scale()) : 1.0f) * parent->coeff()) : (parent->hg->scale() * coeff()));
     }
 
     NodePtr HyperGraph::addNode(const std::string &label, const Color &color, bool via, bool hyper) {
@@ -125,9 +125,14 @@ namespace mhg {
             updateScale(-1);
     }
 
-    void HyperGraph::updateScale(int off) {
+    void HyperGraph::updateScale(int off, bool tmp) {
         float preCoeff = scale();
-        nDrawableNodes += off;
+        if (tmp) {
+            if (parent)
+                parent->dp.tmpDrawableNodes += off;
+        } else {
+            nDrawableNodes += off;
+        }
         float aftCoeff = scale();
         for (auto& n : _nodes)
             n.second->dp.pos = n.second->dp.pos * preCoeff / aftCoeff;
@@ -255,9 +260,7 @@ namespace mhg {
             if (!n.second->via)
                 n.second->predraw(scaledOrigin, offset, s, font);
         for (auto& e : _edges) {
-            if (selectedNodes.count(e.second->from) && selectedNodes.count(e.second->to))
-                e.second->highlight = HIGHLIGHT_INTENSITY_2;
-            auto hoverLink = e.second->draw(scaledOrigin, offset, s, font, physics);
+            auto hoverLink = e.second->draw(scaledOrigin, offset, s, font, physics, selectedNodes);
             if (hoverLink)
                 hoverEdgeLink = hoverLink;
         }
@@ -279,13 +282,21 @@ namespace mhg {
                 for (auto& e : n.second->eIn)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
                         if (e->hg != n.second->hg)
-                            e->draw(e->hg->_scaledOcache, offset, s, font, physics);
+                            e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
                 for (auto& e : n.second->eOut)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
                         if (e->hg != n.second->hg)
-                            e->draw(e->hg->_scaledOcache, offset, s, font, physics);
-            } else {
-                if (n.second->content && s * scale() > HIDE_CONTENT_SCALE) 
+                            e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+            }
+            if (n.second->content) {
+                bool parentOfSelected = false;
+                for (auto& sn : selectedNodes) {
+                    if (n.second->content && sn.first->hg->isChildOf(n.second->content)) {
+                        parentOfSelected = true;
+                        break;
+                    }
+                }
+                if ((s * scale() > HIDE_CONTENT_SCALE) || parentOfSelected)
                     n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
             }
         }
@@ -298,18 +309,17 @@ namespace mhg {
         Vector2 scaledOrigin = origin * s;
         _scaledOcache = scaledOrigin;
         bool big = s * scale() > HIDE_CONTENT_SCALE;
-        for (auto& sn : selectedNodes) {
-            if (sn.first->hg.get() == this) {
-                sn.first->predraw(scaledOrigin, offset, s, font);
-                sn.first->draw(scaledOrigin, offset, s, font);
-                if (sn.first->content)
-                    sn.first->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
-            }
-        }
         if (big) {
-            for (auto& n : _nodes)
-                if (n.second->content)
+            for (auto& n : _nodes) {
+                if (selectedNodes.count(n.second)) {
+                    n.second->predraw(scaledOrigin, offset, s, font);
+                    n.second->draw(scaledOrigin, offset, s, font);
+                    if (n.second->content && big)
+                        n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
+                } else if (n.second->content) {
                     n.second->content->redrawSelected(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
+                }
+            }
         }
     }
 

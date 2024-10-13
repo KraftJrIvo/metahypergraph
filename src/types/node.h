@@ -24,6 +24,7 @@ namespace mhg {
         Vector2 posCache;
         float rCache;
         float rCacheStable;
+        float scaleCache;
         float highlight = 0.0f;
         bool editing = false;
         int tmpDrawableNodes = 0;

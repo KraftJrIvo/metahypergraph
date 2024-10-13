@@ -63,8 +63,9 @@ namespace mhg {
         float ls = hg->scale() * scale;
         Vector2 posmod = origin + dp.pos * ls + offset;
         dp.posCache = posmod;
-        bool willDrop = dp.highlight > 0 && ((dp.overNode && (!hg->parent || dp.overNode != hg->parent)) || dp.overRoot);
+        bool willDrop = (dp.overNode || dp.overRoot);;
         float ss = willDrop ? (dp.overRoot ? scale : (dp.overNode->scale() * scale)) : ls;
+        dp.scaleCache = ss;
         if (hyper) {
             float r = std::clamp((1 + getMaxLinks()) * EDGE_THICK * ss, 1.0f, (1 + getMaxLinks()) * EDGE_THICK);
             dp.rCache = r;
@@ -125,7 +126,13 @@ namespace mhg {
 
     void Node::resetDraw() {
         dp.highlight = 0.0f;
-        dp.tmpDrawableNodes = 0;
+        //if (content && dp.tmpDrawableNodes) {
+        //    int sgn = abs(dp.tmpDrawableNodes)/dp.tmpDrawableNodes;
+        //    while (dp.tmpDrawableNodes)
+        //        content->updateScale(-sgn, true);
+        //} else {
+            dp.tmpDrawableNodes = 0;
+        //}
         dp.overNode = nullptr;
         dp.overRoot = false;
     }

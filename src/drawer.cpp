@@ -43,6 +43,7 @@ namespace mhg {
         NodePtr _grabbedNode = nullptr;
         Vector2 _grabbedInitPos = Vector2Zero();
         Vector2 _grabOff = Vector2Zero();
+        float _grabScale = 1.0f;
 
         NodePtr _addEdgeFromNode = nullptr;
         NodePtr _addEdgeToNode = nullptr;
@@ -221,6 +222,7 @@ namespace mhg {
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
                 if (_hoverNode) {
                     _grabbedNode = _hoverNode;
+                    _grabScale = _scale;
                     _grabbedInitPos = _hoverNode->dp.pos;
                     _grabOff = (_scale * _hoverNode->hg->scale() * _hoverNode->dp.pos + _offset) - mpos;
                     if (!IsKeyDown(KEY_LEFT_CONTROL) && !_selectedNodes.count(_hoverNode))
@@ -274,11 +276,6 @@ namespace mhg {
                         c++;
                     }
                     _grabbedNode = nullptr;
-                } else {
-                    for (auto& n : _selectedNodes) {
-                        float ls = n.first->hg->scale() * _scale;
-                        n.first->dp.pos = ((mpos - _offset + _curOffset) + n.second.second) / ls;
-                    }
                 }
             } else if (_selectionStart.x > 0) {
                 _selectedNodes.clear();
@@ -417,8 +414,15 @@ namespace mhg {
                 sn.first->dp.overNode = _mhg.getNodeAt(sn.first->dp.posCache, exceptSelected);
                 if (sn.first->dp.overNode)
                     if (!sn.first->hg->parent || sn.first->dp.overNode != sn.first->hg->parent)
+                        //sn.first->hg->updateScale(1, true);
                         sn.first->dp.overNode->dp.tmpDrawableNodes++;
+                if (sn.first->hg->parent && sn.first->dp.overNode != sn.first->hg->parent)
+                    //sn.first->hg->updateScale(-1, true);
+                    sn.first->hg->parent->dp.tmpDrawableNodes--;
                 sn.first->dp.overRoot = !bool(sn.first->dp.overNode);
+            }
+            for (auto& sn : _selectedNodes) {
+                sn.first->dp.pos = (GetMousePosition() - _offset + _curOffset + sn.second.second * (_scale / _grabScale)) / (sn.first->hg->scale() * _scale);
             }
         }
         _mhg.draw(_offset + _curOffset, _scale, _font, _selectedNodes, _hoverNode, _hoverEdgeLink);

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <memory>
 #include <set>
+#include <map>
 #include <string>
 #include <string_view>
 
@@ -87,7 +88,7 @@ namespace mhg {
         Vector2 getPoint(Vector2 p0, Vector2 c1, Vector2 p2, float t);
         void reposition();
 
-        EdgeLinkPtr draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics);
+        EdgeLinkPtr draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes);
 
         static EdgePtr create(HyperGraphPtr hg, size_t idx, NodePtr from, NodePtr via, NodePtr to) {
             return std::make_shared<Edge>(hg, idx, from, via, to);
