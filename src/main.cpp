@@ -8,7 +8,8 @@
 
 // TODO
 // merge
-// duplication
+// clone
+// scale
 
 int main(int argc, char *argv[]) {
 	

@@ -66,7 +66,7 @@ namespace mhg {
     }
 
     float HyperGraph::coeff() {
-        return 1.0f / (nDrawableNodes + (parent ? parent->dp.tmpDrawableNodes : 0) + 1);
+        return 1.0f / (nDrawableNodes + 1);
     }
     
     size_t HyperGraph::nodesCount() {
@@ -125,14 +125,9 @@ namespace mhg {
             updateScale(-1);
     }
 
-    void HyperGraph::updateScale(int off, bool tmp) {
+    void HyperGraph::updateScale(int off) {
         float preCoeff = scale();
-        if (tmp) {
-            if (parent)
-                parent->dp.tmpDrawableNodes += off;
-        } else {
-            nDrawableNodes += off;
-        }
+        nDrawableNodes += off;
         float aftCoeff = scale();
         for (auto& n : _nodes)
             n.second->dp.pos = n.second->dp.pos * preCoeff / aftCoeff;
@@ -281,12 +276,10 @@ namespace mhg {
             if (childOrSelected) {
                 for (auto& e : n.second->eIn)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
-                        if (e->hg != n.second->hg)
-                            e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
                 for (auto& e : n.second->eOut)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
-                        if (e->hg != n.second->hg)
-                            e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
             }
             if (n.second->content) {
                 bool parentOfSelected = false;
@@ -309,16 +302,20 @@ namespace mhg {
         Vector2 scaledOrigin = origin * s;
         _scaledOcache = scaledOrigin;
         bool big = s * scale() > HIDE_CONTENT_SCALE;
-        if (big) {
-            for (auto& n : _nodes) {
-                if (selectedNodes.count(n.second)) {
-                    n.second->predraw(scaledOrigin, offset, s, font);
-                    n.second->draw(scaledOrigin, offset, s, font);
-                    if (n.second->content && big)
-                        n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
-                } else if (n.second->content) {
-                    n.second->content->redrawSelected(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
-                }
+        for (auto& n : _nodes) {
+            if (selectedNodes.count(n.second)) {
+                n.second->predraw(scaledOrigin, offset, s, font);
+                n.second->draw(scaledOrigin, offset, s, font);
+                if (n.second->content && big)
+                    n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
+                for (auto& e : n.second->eIn)
+                    if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
+                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+                for (auto& e : n.second->eOut)
+                    if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
+                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+            } else if (n.second->content && big) {
+                n.second->content->redrawSelected(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
             }
         }
     }

@@ -414,10 +414,8 @@ namespace mhg {
                 sn.first->dp.overNode = _mhg.getNodeAt(sn.first->dp.posCache, exceptSelected);
                 if (sn.first->dp.overNode)
                     if (!sn.first->hg->parent || sn.first->dp.overNode != sn.first->hg->parent)
-                        //sn.first->hg->updateScale(1, true);
                         sn.first->dp.overNode->dp.tmpDrawableNodes++;
                 if (sn.first->hg->parent && sn.first->dp.overNode != sn.first->hg->parent)
-                    //sn.first->hg->updateScale(-1, true);
                     sn.first->hg->parent->dp.tmpDrawableNodes--;
                 sn.first->dp.overRoot = !bool(sn.first->dp.overNode);
             }

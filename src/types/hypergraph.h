@@ -47,7 +47,7 @@ namespace mhg {
             NodePtr addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
             NodePtr makeEdgeHyper(EdgePtr edge);
 
-            void updateScale(int off, bool tmp = false);
+            void updateScale(int off);
             void recalcTower(NodePtr in, NodePtr from = nullptr);
 
             void floydWarshall(Matrix& D);

@@ -86,9 +86,14 @@ namespace mhg {
     }
 
     EdgeLinkPtr Edge::draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes) {
-        if (selectedNodes.count(from) && selectedNodes.count(to))
+        bool fromSelected = selectedNodes.count(from);
+        bool toSelected = selectedNodes.count(to);
+        bool fromNotDrawn = (!fromSelected && from->hg->parent && from->hg->parent->hg->scale() * scale < HIDE_CONTENT_SCALE);
+        bool toNotDrawn = (!toSelected && to->hg->parent && to->hg->parent->hg->scale() * scale < HIDE_CONTENT_SCALE);
+        if (fromNotDrawn || toNotDrawn)
+            return nullptr;
+        if (fromSelected && toSelected)
             highlight = HIGHLIGHT_INTENSITY_2;
-
         float ls = hg->scale() * scale;
         float minLvlNodeScale = scale * ((from->hg->scale() > to->hg->scale()) ? from->hg->scale() : to->hg->scale());
         float maxLvlNodeScale = scale * ((from->hg->scale() < to->hg->scale()) ? from->hg->scale() : to->hg->scale());

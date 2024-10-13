@@ -126,13 +126,7 @@ namespace mhg {
 
     void Node::resetDraw() {
         dp.highlight = 0.0f;
-        //if (content && dp.tmpDrawableNodes) {
-        //    int sgn = abs(dp.tmpDrawableNodes)/dp.tmpDrawableNodes;
-        //    while (dp.tmpDrawableNodes)
-        //        content->updateScale(-sgn, true);
-        //} else {
-            dp.tmpDrawableNodes = 0;
-        //}
+        dp.tmpDrawableNodes = 0;
         dp.overNode = nullptr;
         dp.overRoot = false;
     }
