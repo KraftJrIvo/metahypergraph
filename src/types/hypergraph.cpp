@@ -88,9 +88,22 @@ namespace mhg {
     }
 
     void HyperGraph::addNode(NodePtr node) {
+        node->hg = self;
         if (!node->via && !node->hyper)
             updateScale(1);
         _nodes[node->idx] = node;
+    }
+
+    NodePtr HyperGraph::cloneNode(NodePtr node) {
+        auto newNode = std::make_shared<Node>(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, node->p, node->via, node->hyper);
+        newNode->dp = node->dp;
+        newNode->content = node->content;
+        if (node->content) {
+            newNode->content = node->content->clone();
+            newNode->content->parent = newNode;
+        }
+        addNode(newNode);
+        return newNode;
     }
     
     void HyperGraph::transferNode(NodePtr node, bool moveEdges) {
@@ -149,6 +162,20 @@ namespace mhg {
         return edge;
     }
 
+    EdgePtr HyperGraph::cloneEdge(EdgePtr edge, NodePtr from, NodePtr to) {
+        auto edge2 = std::make_shared<Edge>(self, _edges.size() ? (_edges.rbegin()->first + 1) : 0, 
+            from, Node::create(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, {}, true, false), to);
+        for (auto& l : edge->links) {
+            auto edge3 = std::make_shared<Edge>(self, 0, from, nullptr, to);
+            auto link = EdgeLink::create(l);
+            link->edge = edge2;
+            edge3->links = {link};
+            edge2->fuse(edge3);
+        }
+        addEdge(edge2);
+        return edge2;
+    }
+
     void HyperGraph::addEdge(EdgePtr edge) {
         addNode(edge->via);
         _edges[edge->idx] = edge;
@@ -202,6 +229,40 @@ namespace mhg {
         (*node->eIn.begin())->reposition();
         (*node->eOut.begin())->reposition();
         return node;
+    }
+
+    HyperGraphPtr HyperGraph::clone() {
+        auto hg = std::make_shared<HyperGraph>(pmhg);
+        hg->self = hg;
+        hg->nDrawableNodes = 0;
+        hg->_nodes.clear();
+        hg->_edges.clear();
+        for (auto& n : _nodes)
+            hg->cloneNode(n.second);
+        for (auto& n : _nodes) {
+            for (auto& e : n.second->eIn) {
+                auto p = (e->hg == self) ? hg : e->hg;
+                if (!e->from->hg->isChildOf(self) || !e->to->hg->isChildOf(self)) {
+                    p->cloneEdge(e, 
+                        e->from->hg->isChildOf(self) ? hg->_nodes[e->from->idx] : e->from,
+                        e->to->hg->isChildOf(self) ? hg->_nodes[e->to->idx] : e->to
+                    );
+                }
+            }
+            for (auto& e : n.second->eOut) {
+                auto p = (e->hg == self) ? hg : e->hg;
+                if (!e->from->hg->isChildOf(self) || !e->to->hg->isChildOf(self)) {
+                    p->cloneEdge(e, 
+                        e->from->hg->isChildOf(self) ? hg->_nodes[e->from->idx] : e->from,
+                        e->to->hg->isChildOf(self) ? hg->_nodes[e->to->idx] : e->to
+                    );
+                }
+            }
+        }
+        for (auto& e : _edges)
+            if (e.second->from->hg->isChildOf(self) && e.second->to->hg->isChildOf(self))
+                hg->cloneEdge(e.second, hg->_nodes[e.second->from->idx], hg->_nodes[e.second->to->idx]);
+        return hg;
     }
 
     void HyperGraph::reposition(unsigned int seed) {
@@ -328,6 +389,14 @@ namespace mhg {
         }
     }
 
+    std::set<NodePtr> HyperGraph::getAllNodes() {
+        std::set<NodePtr> all;
+        for (auto n : _nodes)
+            if (!n.second->via)
+                all.insert(n.second);
+        return all;
+    }
+
     NodePtr HyperGraph::getNodeAt(Vector2 pos, const std::set<NodePtr>& except) {
         for (auto& n : _nodes) {
             if (n.second->via || n.second->hyper || except.count(n.second))
@@ -347,6 +416,8 @@ namespace mhg {
     
     void HyperGraph::getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except) {
         for (auto& n : _nodes) {
+            if (n.second->via)
+                continue;
             auto r = n.second->dp.rCache;
             Rectangle radiusRect = {rect.x + r, rect.y + r, rect.width - r * 2, rect.height - r * 2};
             if (!except.count(n.second)) {                

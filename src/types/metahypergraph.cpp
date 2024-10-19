@@ -1,4 +1,5 @@
 #include "metahypergraph.h"
+#include "base.h"
 #include "edge.h"
 #include "raylib.h"
 #include "raymath.h"
@@ -95,6 +96,36 @@ namespace mhg {
         auto node = hg->addNode(label, color);
         noticeAction({.type = MHGactionType::NODE, .inverse = false, .n = node}, false);
         return node;
+    }
+
+    std::set<NodePtr> MetaHyperGraph::cloneNodes(const std::set<NodePtr>& nodes) {
+        std::map<NodePtr, NodePtr> clones;
+        std::set<NodePtr> newNodes;
+        for (auto& n : nodes) {
+            auto node2 = n->hg->cloneNode(n);
+            noticeAction({.type = MHGactionType::NODE, .inverse = false, .n = node2}, false);
+            clones[n] = node2;
+            newNodes.insert(node2);
+        }
+        for (auto& n : nodes) {
+            for (auto& e : n->eOut) {
+                bool fromClone = nodes.count(e->from);
+                bool toClone = nodes.count(e->to);
+                auto e2 = n->hg->cloneEdge(e, fromClone ? clones[e->from] : e->from, toClone ? clones[e->to] : e->to);
+                for (auto& l : e2->links)
+                    noticeAction({.type = MHGactionType::EDGE, .inverse = false, .e = e2, .els = l->style}, false);
+            }
+            for (auto& e : n->eIn) {
+                bool fromClone = nodes.count(e->from);
+                bool toClone = nodes.count(e->to);
+                if (!fromClone || !toClone) {
+                    auto e2 = e->hg->cloneEdge(e, fromClone ? clones[e->from] : e->from, toClone ? clones[e->to] : e->to);
+                    for (auto& l : e2->links)
+                        noticeAction({.type = MHGactionType::EDGE, .inverse = false, .e = e2, .els = l->style}, false);
+                }
+            }
+        }
+        return newNodes;
     }
 
     void MetaHyperGraph::_addNode(NodePtr node) {
@@ -278,6 +309,10 @@ namespace mhg {
         _root->redrawSelected(Vector2Zero(), offset, scale, font, _physicsEnabled, selectedNodes, hoverNode, hoverEdgeLink);
         _root->resetDraw();
         _lock.unlock();
+    }
+
+    std::set<NodePtr> MetaHyperGraph::getAllNodes() {
+        return _root->getAllNodes();
     }
 
     NodePtr MetaHyperGraph::getNodeAt(Vector2 pos, const std::set<NodePtr>& except) {

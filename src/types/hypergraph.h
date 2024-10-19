@@ -37,15 +37,19 @@ namespace mhg {
 
             NodePtr addNode(const std::string& label, const Color& color, bool via = false, bool hyper = false);
             void addNode(NodePtr node);
+            NodePtr cloneNode(NodePtr node);
             void removeNode(NodePtr node, bool removeOuterEdges = true);
             void transferNode(NodePtr node, bool moveEdges = true);
             EdgePtr addEdge(EdgeLinkStylePtr style, NodePtr from, NodePtr to, const EdgeLinkParams& params = {});
+            EdgePtr cloneEdge(EdgePtr edge, NodePtr from, NodePtr to);
             void addEdge(EdgePtr edge);
             void removeEdge(EdgePtr edge, bool clear = true);
             void reduceEdge(EdgePtr edge, bool clear = true);
             void transferEdge(EdgePtr edge);
             NodePtr addHyperEdge(const EdgeLinksBundle& froms, const EdgeLinksBundle& tos);
             NodePtr makeEdgeHyper(EdgePtr edge);
+
+            HyperGraphPtr clone();
 
             void updateScale(int off);
             void recalcTower(NodePtr in, NodePtr from = nullptr);
@@ -62,6 +66,7 @@ namespace mhg {
             void redrawSelected(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
             void resetDraw();
 
+            std::set<NodePtr> getAllNodes();
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
             void getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except = {});
 

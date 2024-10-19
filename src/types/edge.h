@@ -26,7 +26,7 @@ namespace mhg {
         static EdgeLinkStylePtr create() {
             return std::make_shared<EdgeLinkStyle>();
         }
-        static EdgeLinkStylePtr create(Color color, std::string label) {
+        static EdgeLinkStylePtr create(Color color = RED, const std::string& label = "") {
             return std::make_shared<EdgeLinkStyle>(EdgeLinkStyle{color, label});
         }
     };

@@ -74,7 +74,7 @@ void mhg::HyperGraph::kamadaKawai() {
     size_t maxEnrgNodeId; 
     Vector2 dE_dpos;
 
-    auto moveNode = [&](size_t idx, const Vector2& dE_dpos) {
+    auto moveNode = [&](size_t idx, Vector2 dE_dpos) {
         float d2E_dx2 = 0;
         float d2E_dxdy = 0;
         float d2E_dy2 = 0;

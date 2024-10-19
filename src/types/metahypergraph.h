@@ -34,6 +34,7 @@ namespace mhg {
             void init();
 
             NodePtr addNode(const std::string& label, const Color& color, NodePtr parent = nullptr);
+            std::set<NodePtr> cloneNodes(const std::set<NodePtr>& nodes);
             void removeNode(NodePtr node);
             void moveNode(NodePtr node, Vector2 prvPos, Vector2 newPos);
             void transferNode(HyperGraphPtr to, NodePtr node);
@@ -51,6 +52,7 @@ namespace mhg {
 
             void draw(Vector2 offset, float scale, const Font& font, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes, NodePtr& hoverNode, EdgeLinkPtr& hoverEdgeLink);
 
+            std::set<NodePtr> getAllNodes();
             NodePtr getNodeAt(Vector2 pos, const std::set<NodePtr>& except);
             void getNodesIn(Rectangle rect, std::set<NodePtr>& result, const std::set<NodePtr>& except = {});
 
