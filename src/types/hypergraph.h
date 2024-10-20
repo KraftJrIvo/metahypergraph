@@ -8,8 +8,16 @@
 #include "edge.h"
 #include "metahypergraph.h"
 #include "raylib.h"
+#include "raymath.h"
 
 namespace mhg {
+
+    struct HyperGraphDrawParams {
+        int nDrawableNodes = 0;
+        int _nDrawableNodesCache = -1;
+        float _scaleCache = 0;
+        Vector2 _scaledOcache = Vector2Zero();
+    };
 
     class MetaHyperGraph;
     class HyperGraph {
@@ -22,13 +30,12 @@ namespace mhg {
             HyperGraphPtr self = nullptr;
             NodePtr parent = nullptr;
             int lvl = 0;
+
+            HyperGraphDrawParams dp;
+
             float coeff();
             float scale();
             size_t nodesCount();
-            int nDrawableNodes = 0;
-            int _nDrawableNodesCache = -1;
-            float _scaleCache;
-            Vector2 _scaledOcache;
 
             bool isChildOf(HyperGraphPtr hg);
             void clear();

@@ -66,7 +66,7 @@ namespace mhg {
     }
 
     float HyperGraph::coeff() {
-        return 1.0f / (nDrawableNodes + 1);
+        return 1.0f / (dp.nDrawableNodes + 1);
     }
     
     size_t HyperGraph::nodesCount() {
@@ -76,7 +76,7 @@ namespace mhg {
     float HyperGraph::scale() {
         if (!parent)
             return 1.0f;
-        _nDrawableNodesCache = nDrawableNodes + (parent ? parent->dp.tmpDrawableNodes : 0);
+        dp._nDrawableNodesCache = dp.nDrawableNodes + (parent ? parent->dp.tmpDrawableNodes : 0);
         bool willDrop = (parent->dp.overNode || parent->dp.overRoot);
         return (willDrop ? ((parent->dp.overNode ? (parent->dp.overNode->scale()) : 1.0f) * parent->coeff()) : (parent->hg->scale() * coeff()));
     }
@@ -140,7 +140,7 @@ namespace mhg {
 
     void HyperGraph::updateScale(int off) {
         float preCoeff = scale();
-        nDrawableNodes += off;
+        dp.nDrawableNodes += off;
         float aftCoeff = scale();
         for (auto& n : _nodes)
             n.second->dp.pos = n.second->dp.pos * preCoeff / aftCoeff;
@@ -163,8 +163,9 @@ namespace mhg {
     }
 
     EdgePtr HyperGraph::cloneEdge(EdgePtr edge, NodePtr from, NodePtr to) {
-        auto edge2 = std::make_shared<Edge>(self, _edges.size() ? (_edges.rbegin()->first + 1) : 0, 
-            from, Node::create(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, {}, true, false), to);
+        auto via = Node::create(self, _nodes.size() ? (_nodes.rbegin()->first + 1) : 0, {}, true, false);
+        auto idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
+        auto edge2 = Edge::create(self, idx, from, via, to);
         for (auto& l : edge->links) {
             auto edge3 = std::make_shared<Edge>(self, 0, from, nullptr, to);
             auto link = EdgeLink::create(l);
@@ -203,7 +204,8 @@ namespace mhg {
         edge->hg->removeEdge(edge, false);
         size_t idx = _edges.size() ? (_edges.rbegin()->first + 1) : 0;
         _edges[idx] = edge;
-        edge->reindex(self, idx);
+        edge->hg = self;
+        edge->idx = idx;
         transferNode(edge->via, false);
     }
 
@@ -234,7 +236,7 @@ namespace mhg {
     HyperGraphPtr HyperGraph::clone() {
         auto hg = std::make_shared<HyperGraph>(pmhg);
         hg->self = hg;
-        hg->nDrawableNodes = 0;
+        hg->dp.nDrawableNodes = 0;
         hg->_nodes.clear();
         hg->_edges.clear();
         for (auto& n : _nodes)
@@ -311,7 +313,7 @@ namespace mhg {
     {
         origin += (parent ? (parent->hg->scale() * parent->dp.pos) : Vector2Zero());
         Vector2 scaledOrigin = origin * s;
-        _scaledOcache = scaledOrigin;
+        dp._scaledOcache = scaledOrigin;
         for (auto& n : _nodes)
             if (!n.second->via)
                 n.second->predraw(scaledOrigin, offset, s, font);
@@ -337,10 +339,10 @@ namespace mhg {
             if (childOrSelected) {
                 for (auto& e : n.second->eIn)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
-                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+                        e->draw(e->hg->dp._scaledOcache, offset, s, font, physics, selectedNodes);
                 for (auto& e : n.second->eOut)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
-                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+                        e->draw(e->hg->dp._scaledOcache, offset, s, font, physics, selectedNodes);
             }
             if (n.second->content) {
                 bool parentOfSelected = false;
@@ -361,7 +363,7 @@ namespace mhg {
     {
         origin += (parent ? (parent->hg->scale() * parent->dp.pos) : Vector2Zero());
         Vector2 scaledOrigin = origin * s;
-        _scaledOcache = scaledOrigin;
+        dp._scaledOcache = scaledOrigin;
         bool big = s * scale() > HIDE_CONTENT_SCALE;
         for (auto& n : _nodes) {
             if (selectedNodes.count(n.second)) {
@@ -371,10 +373,10 @@ namespace mhg {
                     n.second->content->draw(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
                 for (auto& e : n.second->eIn)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
-                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+                        e->draw(e->hg->dp._scaledOcache, offset, s, font, physics, selectedNodes);
                 for (auto& e : n.second->eOut)
                     if (e->hg->parent && s * e->hg->parent->hg->scale() > HIDE_CONTENT_SCALE)
-                        e->draw(e->hg->_scaledOcache, offset, s, font, physics, selectedNodes);
+                        e->draw(e->hg->dp._scaledOcache, offset, s, font, physics, selectedNodes);
             } else if (n.second->content && big) {
                 n.second->content->redrawSelected(origin, offset, s, font, physics, selectedNodes, hoverNode, hoverEdgeLink);
             }

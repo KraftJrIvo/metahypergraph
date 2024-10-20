@@ -80,11 +80,6 @@ namespace mhg {
         }
     }
 
-    void Edge::reindex(HyperGraphPtr hg_, size_t idx_) {
-        hg = hg_;
-        idx = idx_;
-    }
-
     EdgeLinkPtr Edge::draw(Vector2 origin, Vector2 offset, float scale, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes) {
         bool fromSelected = selectedNodes.count(from);
         bool toSelected = selectedNodes.count(to);
@@ -93,7 +88,7 @@ namespace mhg {
         if (fromNotDrawn || toNotDrawn)
             return nullptr;
         if (fromSelected && toSelected)
-            highlight = HIGHLIGHT_INTENSITY_2;
+            dp.highlight = HIGHLIGHT_INTENSITY_2;
         float ls = hg->scale() * scale;
         float minLvlNodeScale = scale * ((from->hg->scale() > to->hg->scale()) ? from->hg->scale() : to->hg->scale());
         float maxLvlNodeScale = scale * ((from->hg->scale() < to->hg->scale()) ? from->hg->scale() : to->hg->scale());
@@ -146,7 +141,7 @@ namespace mhg {
             float start = fromSameHG ? t2 : t1;
             float end   = fromSameHG ? t1 : t2;
             float thick = std::clamp(EDGE_THICK * maxLvlNodeScale, 1.0f, EDGE_THICK);
-            bool hover = DrawSplineSegmentBezierQuadraticPart(pt0m, pt1m, pt2m, thick, l->style->color, start, end, std::max(l->highlight, highlight));
+            bool hover = DrawSplineSegmentBezierQuadraticPart(pt0m, pt1m, pt2m, thick, l->style->color, start, end, std::max(l->highlight, dp.highlight));
             if (hover)
                 hoverLink = l;
 
@@ -157,13 +152,13 @@ namespace mhg {
                     auto pt = getPoint(pt0m, pt1m, pt2m, 0.0 - 0.01);
                     float ang = atan2(apos2.y - pt.y, apos2.x - pt.x);
                     Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, ang);
-                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * ang / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
+                    DrawTextureEx(arrow, apos - off * arscl, 180.0f * ang / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, dp.highlight)));
                 }
                 if (l->params.backward) {
                     auto pt = getPoint(pt0m, pt1m, pt2m, 1.0 + 0.01);
                     float ang = atan2(apos2.y - pt.y, apos2.x - pt.x);
                     Vector2 off = Vector2Rotate(Vector2{(float)arrow.width, (float)arrow.height} * 0.5f, ang);
-                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * ang / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, highlight)));
+                    DrawTextureEx(arrow, apos2 - off * arscl, 180.0f * ang / PI, arscl, ColorBrightness(l->style->color, std::max(l->highlight, dp.highlight)));
                 }
             }
             bool drawLabel = l->editing || l->highlight;
@@ -180,7 +175,7 @@ namespace mhg {
             }
             l->highlight = 0.0f;
         }
-        highlight = 0.0f;
+        dp.highlight = 0.0f;
         return hoverLink;
     }
 }

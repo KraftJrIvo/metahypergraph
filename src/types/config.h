@@ -16,3 +16,5 @@
 #define SPRING_LEN 100.0f
 #define SPRING_STR 0.05f
 #define LINKS_DENSITY 3.0f
+
+#define SCALING_EVENT_TIMEOUT 0.5

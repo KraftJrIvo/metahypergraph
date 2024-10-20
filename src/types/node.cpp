@@ -10,7 +10,7 @@
 namespace mhg {
 
     float Node::coeff() {
-        return 1.0f / ((content ? content->nDrawableNodes : 0) + dp.tmpDrawableNodes + 1);
+        return 1.0f / ((content ? content->dp.nDrawableNodes : 0) + dp.tmpDrawableNodes + 1);
     }
     
     size_t Node::nodesCount() {

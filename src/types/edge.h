@@ -61,6 +61,10 @@ namespace mhg {
     bool operator==(const EdgeLinkPtr& lhs, const EdgeLinkPtr& rhs);
     bool operator<(const EdgeLinkPtr& lhs, const EdgeLinkPtr& rhs);
 
+    struct EdgeDrawParams {
+        float highlight = 0.0f;
+    };
+
     struct Edge {
         HyperGraphPtr hg = nullptr;
         size_t idx;
@@ -69,7 +73,7 @@ namespace mhg {
         NodePtr via;
         NodePtr to;
 
-        float highlight = 0.0f;
+        EdgeDrawParams dp;
 
         static Texture2D getArrowHead();
 
@@ -81,13 +85,11 @@ namespace mhg {
         void fuse(EdgePtr edge);
         void reduce(EdgePtr edge);
 
-        void reindex(HyperGraphPtr hg, size_t idx);
-
         void findArrowPositionBezier(Vector2 p0, Vector2 c1, Vector2 p2, bool atStart, float scale, Vector2& at, float& angle, float& t);
         bool DrawSplineSegmentBezierQuadraticPart(Vector2 p0, Vector2 c1, Vector2 p2, float thick, Color color, float start, float end, float highlight);
         Vector2 getPoint(Vector2 p0, Vector2 c1, Vector2 p2, float t);
-        void reposition();
 
+        void reposition();
         EdgeLinkPtr draw(Vector2 origin, Vector2 offset, float s, const Font& font, bool physics, const std::map<NodePtr, std::pair<Vector2, Vector2>>& selectedNodes);
 
         static EdgePtr create(HyperGraphPtr hg, size_t idx, NodePtr from, NodePtr via, NodePtr to) {
