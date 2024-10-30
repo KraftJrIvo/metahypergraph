@@ -422,7 +422,6 @@ namespace mhg {
     }
 
     void DrawerImpl::_scaleSelection() {
-        auto mpos = GetMousePosition();
         auto mwm = GetMouseWheelMove();
         if (mwm)  {
             float newScale = _scale + mwm * _scale / 10.0f;
@@ -435,7 +434,7 @@ namespace mhg {
             for (auto& sn : _selectedNodes) {
                 auto newpospix = center + (sn.first->dp.posCache - center) * (newScale / _scale);
                 auto pos = (_scale * sn.first->hg->scale() * sn.first->dp.pos + _offset);
-                sn.first->dp.pos = (newpospix - _offset + _curOffset + (pos - sn.first->dp.posCache) * (_scale / _grabScale)) / (sn.first->hg->scale() * _scale);
+                sn.first->dp.pos = (newpospix - _offset + _curOffset + (pos - sn.first->dp.posCache)) / (sn.first->hg->scale() * _scale);
             }
             _recentlyScaled = true;
             _lastScaleTs = GetTime();
@@ -474,9 +473,12 @@ namespace mhg {
         if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
             _offset = _offset + _curOffset;
         _curOffset = IsMouseButtonDown(MOUSE_BUTTON_RIGHT) ? (mpos - _lastMouseGrabPos) : Vector2Zero();
-        float newScale = _scale + GetMouseWheelMove() * _scale / 10.0f;
-                        _offset -= ((mpos - _offset) / _scale) * (newScale - _scale);
-        _scale = newScale;
+        auto mwm = GetMouseWheelMove();
+        if (mwm)  {
+            float newScale = _scale + mwm * _scale / 10.0f;
+            _offset -= ((mpos - _offset - _curOffset) / _scale) * (newScale - _scale);
+            _scale = newScale;
+        }
     }
 
     void DrawerImpl::_toggleFullscreen() {
@@ -567,7 +569,7 @@ namespace mhg {
             }
 
             // PAN + ZOOM
-            if (selecting)
+            if (selecting && !IsMouseButtonDown(MOUSE_BUTTON_LEFT))
                 _scaleSelection();
             else
                 _panAndZoom();
