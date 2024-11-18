@@ -1,6 +1,5 @@
 #include "hypergraph.h"
 #include "raylib.h"
-#include "../util/vec_ops.h"
 #include "raymath.h"
 #include <cmath>
 #include <cstddef>

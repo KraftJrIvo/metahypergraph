@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.h"
+#include "util/vec_ops.h"
 
 #include <memory>
 

@@ -9,16 +9,16 @@ project(MHG VERSION 1.0 DESCRIPTION "meta hyper graph" LANGUAGES CXX)
 
 # TARGET
 set(MHG_SOURCE_FILES    
-    "src/types/node.cpp"
-    "src/types/edge.cpp"
-    "src/types/hypergraph.cpp"
-    "src/types/metahypergraph.cpp"
-    "src/util/bezier.cpp"
-    "src/util/floyd_warshall.cpp"
-    "src/util/kamada_kawai.cpp"
-    "src/drawer.cpp"
-    "src/main.cpp"
-    "res/icon.rc"
+"src/types/node.cpp"
+"src/types/edge.cpp"
+"src/types/hypergraph.cpp"
+"src/types/metahypergraph.cpp"
+"src/util/bezier.cpp"
+"src/util/floyd_warshall.cpp"
+"src/util/kamada_kawai.cpp"
+"src/drawer.cpp"
+"src/main.cpp"
+"res/icon.rc"
 )
 add_executable(MHG ${MHG_SOURCE_FILES})
 target_include_directories(MHG PUBLIC "src")
@@ -27,7 +27,8 @@ target_include_directories(MHG PUBLIC "src")
 find_package(Eigen3 CONFIG REQUIRED)
 target_link_libraries(MHG PUBLIC Eigen3::Eigen)
 
-set(RAYLIB_VERSION 5.0)
+set(RAYLIB_VERSION 5.5)
+add_compile_definitions(RAYMATH_DISABLE_CPP_OPERATORS)
 find_package(raylib ${RAYLIB_VERSION} QUIET) # QUIET or REQUIRED
 if (NOT raylib_FOUND) # If there's none, fetch and build raylib
   include(FetchContent)
@@ -39,9 +40,8 @@ if (NOT raylib_FOUND) # If there's none, fetch and build raylib
   FetchContent_GetProperties(raylib)
   if (NOT raylib_POPULATED) # Have we downloaded raylib yet?
     set(FETCHCONTENT_QUIET NO)
-    FetchContent_Populate(raylib)
+    FetchContent_MakeAvailable(raylib)
     set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE) # don't build the supplied examples
-    add_subdirectory(${raylib_SOURCE_DIR} ${raylib_BINARY_DIR})
   endif()
 endif()
 target_link_libraries(MHG PUBLIC raylib)

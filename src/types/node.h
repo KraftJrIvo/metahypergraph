@@ -10,7 +10,6 @@
 #include "raymath.h"
 
 #include "base.h"
-#include "../util/vec_ops.h"
 
 namespace mhg {
 
